@@ -9,7 +9,17 @@
 |---|---|
 | **Phase 0 — Fondations** | ✅ Terminée (0.1 → 0.7) |
 | **Phase 1 — Comptes et droits** | ✅ Terminée (1.1 → 1.7) |
-| Phase 2 — Livreurs | ⏭ Prochaine (après le cahier de recette de la phase 1, à valider) |
+| Phase 2 — Livreurs | 🔄 En cours : 2.1 faite → prochaine **tâche 2.2** (premier accès : le livreur choisit son PIN à 6 chiffres) |
+
+### Détail de la phase 2
+
+| # | Tâche | Preuve |
+|---|---|---|
+| 2.1 | Ajouter / rattacher un livreur (`/espace/livreurs`) | 6 tests base (même téléphone écrit autrement = 1 livreur rattaché à 2 entreprises, type de contrat par entreprise, doublon refusé, rattachement après détachement, validations, droits) + 18 tests de numéros + navigateur |
+
+**Livreurs (2.1)** : `src/lib/couriers/couriers.ts`. Le téléphone est normalisé (`normalizePhone`, format +2250707070707) : un numéro = un compte livreur sur toute la plateforme. Ajouter un numéro qui existe déjà le **rattache** sans changer son nom ; l'entreprise ne voit jamais ses autres rattachements. Type Employé / Indépendant propre à chaque entreprise. Admin entreprise + gestionnaire (`couriers.manage`).
+
+Cahier de recette de la phase 1 : `docs/CAHIER-DE-RECETTE.docx` (52 tests, 23 P1) + `docs/BUGS_ET_AMELIORATIONS.docx`. Bloquant : compte admin plateforme de recette à fournir.
 
 ### Détail de la phase 1
 
