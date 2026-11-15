@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { deliveries } from "@/db/schema";
 import { logEvent, type AuditEventInput, type Executor } from "@/lib/audit";
+import { tenantScope } from "@/lib/tenant/scope";
 import { checkTransition, type DeliveryStatus, type TransitionError, type TransitionOptions } from "./transitions";
 
 export class TransitionRefused extends Error {
@@ -14,6 +15,8 @@ export class TransitionRefused extends Error {
 }
 
 export type ChangeStatusInput = TransitionOptions & {
+  /** Entreprise de l'acteur : une livraison d'une autre entreprise est « introuvable ». */
+  companyId: string;
   deliveryId: string;
   to: DeliveryStatus;
   actor: Pick<AuditEventInput, "actorType" | "actorId">;
@@ -42,7 +45,7 @@ export async function changeDeliveryStatus(executor: Executor, input: ChangeStat
         courierId: deliveries.courierId,
       })
       .from(deliveries)
-      .where(eq(deliveries.id, input.deliveryId))
+      .where(tenantScope(tx, input.companyId).filter(deliveries, eq(deliveries.id, input.deliveryId)))
       .for("update");
 
     if (!current) throw new TransitionRefused("NOT_FOUND", "Livraison introuvable");
@@ -84,11 +87,7 @@ export async function changeDeliveryStatus(executor: Executor, input: ChangeStat
         break;
     }
 
-    const [updated] = await tx
-      .update(deliveries)
-      .set(changes)
-      .where(eq(deliveries.id, current.id))
-      .returning();
+    const [updated] = await tenantScope(tx, input.companyId).update(deliveries, changes, eq(deliveries.id, current.id));
 
     await logEvent(tx, {
       companyId: current.companyId,

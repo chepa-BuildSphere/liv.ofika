@@ -5,6 +5,7 @@ import { issueActivationToken } from "@/lib/auth/activation";
 import type { CompanyUserIdentity, UserRole } from "@/lib/auth/company-user";
 import { can, userActor } from "@/lib/auth/permissions";
 import { normalizeEmail } from "@/lib/auth/platform-admin";
+import { tenantScope } from "@/lib/tenant/scope";
 import { EMAIL_RE, PHONE_HINT, PHONE_RE } from "@/lib/validation";
 
 // Gestion de l'équipe d'une entreprise par son admin (mvp.md §4.2 :
@@ -44,7 +45,7 @@ async function loadTarget(db: Executor, actor: CompanyUserIdentity, userId: stri
   const [target] = await db
     .select({ id: users.id, name: users.name, isActive: users.isActive, activatedAt: users.activatedAt })
     .from(users)
-    .where(and(eq(users.id, userId), eq(users.companyId, actor.companyId)))
+    .where(tenantScope(db, actor.companyId).filter(users, eq(users.id, userId)))
     .limit(1)
     .for("update");
   if (!target) throw new TeamError("NOT_FOUND", "Utilisateur introuvable.");
@@ -66,7 +67,7 @@ async function otherActiveAdmins(db: Executor, companyId: string, excludeUserId:
     .select({ id: users.id })
     .from(users)
     .innerJoin(userRoles, and(eq(userRoles.userId, users.id), eq(userRoles.role, "COMPANY_ADMIN")))
-    .where(and(eq(users.companyId, companyId), eq(users.isActive, true), ne(users.id, excludeUserId)));
+    .where(tenantScope(db, companyId).filter(users, eq(users.isActive, true), ne(users.id, excludeUserId)));
   return rows.length;
 }
 
@@ -89,7 +90,7 @@ export async function listTeam(db: Executor, actor: CompanyUserIdentity): Promis
   const members = await db
     .select({ id: users.id, name: users.name, email: users.email, phone: users.phone, isActive: users.isActive, activatedAt: users.activatedAt })
     .from(users)
-    .where(eq(users.companyId, actor.companyId))
+    .where(tenantScope(db, actor.companyId).filter(users))
     .orderBy(users.createdAt);
   if (members.length === 0) return [];
 
@@ -139,13 +140,13 @@ export async function inviteUser(db: Executor, actor: CompanyUserIdentity, input
   if (Object.keys(fields).length) throw new TeamError("INVALID", "Formulaire incomplet.", fields);
 
   return db.transaction(async (tx) => {
+    // tenant-guard: global — l'e-mail est l'identifiant de connexion, unique sur
+    // toute la plateforme ; on lit seulement « existe ou non », jamais la ligne.
     const [taken] = await tx.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
     if (taken) throw new TeamError("INVALID", "Cet e-mail est déjà utilisé.", { email: "Cet e-mail est déjà utilisé par un autre compte." });
 
-    const [user] = await tx
-      .insert(users)
-      .values({ companyId: actor.companyId, name, email, phone })
-      .returning({ id: users.id, name: users.name, email: users.email, phone: users.phone });
+    const [created] = await tenantScope(tx, actor.companyId).insert(users, { name, email, phone });
+    const user = { id: created.id, name: created.name, email: created.email, phone: created.phone };
     await tx.insert(userRoles).values(roles.map((role) => ({ userId: user.id, role })));
 
     const { token, expiresAt } = await issueActivationToken(tx, user.id, { userId: actor.id });
@@ -208,7 +209,7 @@ export async function setUserActive(db: Executor, actor: CompanyUserIdentity, us
       }
     }
 
-    await tx.update(users).set({ isActive: active }).where(eq(users.id, target.id));
+    await tenantScope(tx, actor.companyId).update(users, { isActive: active }, eq(users.id, target.id));
     if (!active) {
       // Coupe tout de suite ses sessions et ses liens d'activation en cours
       const now = new Date();

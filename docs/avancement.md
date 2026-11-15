@@ -8,7 +8,7 @@
 | Phase | État |
 |---|---|
 | **Phase 0 — Fondations** | ✅ Terminée (0.1 → 0.7) |
-| Phase 1 — Comptes et droits | 🔄 En cours : 1.1 → 1.5 faites → prochaine **tâche 1.6** (cloisonnement : filtre `company_id` obligatoire) |
+| Phase 1 — Comptes et droits | 🔄 En cours : 1.1 → 1.6 faites → prochaine **tâche 1.7** (journalisation des consultations du support, `SUPPORT_VIEW`) |
 
 ### Détail de la phase 1
 
@@ -22,6 +22,10 @@
 | 1.4 | Équipe : invitation, rôles multiples, désactivation (`/espace/equipe`) | 9 tests base (dont gestionnaire + resp. retours, autre entreprise refusée, dernier admin protégé) + navigateur |
 
 | 1.5 | Garde unique des droits `src/lib/auth/permissions.ts` | 45 tests : les 29 lignes de la matrice §4.2 × 6 acteurs, périmètres 🔸, cloisonnement, règle 6, refus par défaut. Revue `security-review` : aucune faille |
+
+| 1.6 | Cloisonnement : `tenantScope` + garde statique du code | 6 tests base (A ne voit rien de B sur les 10 tables d'entreprise, tentatives, lecture/modif par identifiant, insertion détournée) + 5 tests de la garde statique |
+
+**Cloisonnement (1.6)** : toute requête sur une table d'entreprise passe par `tenantScope(db, companyId)` (`src/lib/tenant/scope.ts`) : filtre imposé en lecture/mise à jour, `company_id` forcé à l'insertion et non modifiable. Le test `tenant-guard.test.ts` lit tout le code et échoue sur une requête directe non justifiée (exceptions listées avec leur raison, ou commentaire `tenant-guard: <raison>`). Pas de RLS PostgreSQL : incompatible avec Neon Realtime. **Trou corrigé** : `changeDeliveryStatus` exige maintenant `companyId` (une livraison d'une autre entreprise est « introuvable »).
 
 **Droits (1.5)** : toute décision passe par `can(acteur, action, ressource)` / `assertCan(...)`. La matrice est une table (une ligne par action) ; refus par défaut ; l'admin plateforme lit en « support » (`supportAccess`, à journaliser en 1.7). Le test recopie la matrice du document avec ses symboles et vérifie que garde et matrice ont les mêmes actions. Règle 6 : l'acteur porte `courierId` si l'utilisateur est aussi livreur — **le rapprochement utilisateur ↔ livreur reste à faire en phase 2**. Le service de statut (0.7) sera branché sur la garde quand les écrans de livraison existeront (phase 3).
 

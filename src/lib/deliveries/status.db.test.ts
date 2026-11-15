@@ -60,7 +60,7 @@ describe("changeDeliveryStatus (base réelle)", () => {
       const { delivery } = await seed(tx);
 
       await expect(
-        changeDeliveryStatus(tx, { deliveryId: delivery.id, to: "DELIVERED", proofMethod: "QR", actor: admin }),
+        changeDeliveryStatus(tx, { companyId: delivery.companyId, deliveryId: delivery.id, to: "DELIVERED", proofMethod: "QR", actor: admin }),
       ).rejects.toMatchObject({ name: "TransitionRefused", code: "NOT_ALLOWED" });
 
       const [after] = await tx.select().from(deliveries).where(eq(deliveries.id, delivery.id));
@@ -75,16 +75,16 @@ describe("changeDeliveryStatus (base réelle)", () => {
       const { delivery, courier } = await seed(tx);
       const id = delivery.id;
 
-      await changeDeliveryStatus(tx, { deliveryId: id, to: "ASSIGNED", courierId: courier.id, actor: admin });
-      await changeDeliveryStatus(tx, { deliveryId: id, to: "PICKED_UP", actor: courierActor });
+      await changeDeliveryStatus(tx, { companyId: delivery.companyId, deliveryId: id, to: "ASSIGNED", courierId: courier.id, actor: admin });
+      await changeDeliveryStatus(tx, { companyId: delivery.companyId, deliveryId: id, to: "PICKED_UP", actor: courierActor });
       await changeDeliveryStatus(tx, {
-        deliveryId: id,
+        companyId: delivery.companyId,        deliveryId: id,
         to: "ARRIVED",
         actor: courierActor,
         context: { lat: 5.3364, lng: -4.0267, accuracy: 15 },
       });
       const done = await changeDeliveryStatus(tx, {
-        deliveryId: id,
+        companyId: delivery.companyId,        deliveryId: id,
         to: "DELIVERED",
         proofMethod: "QR",
         actor: { actorType: "SYSTEM", actorId: null },
@@ -110,7 +110,7 @@ describe("changeDeliveryStatus (base réelle)", () => {
 
       // Verrouillée : plus rien ne passe
       await expect(
-        changeDeliveryStatus(tx, { deliveryId: id, to: "DELIVERY_FAILED", actor: courierActor }),
+        changeDeliveryStatus(tx, { companyId: delivery.companyId, deliveryId: id, to: "DELIVERY_FAILED", actor: courierActor }),
       ).rejects.toMatchObject({ code: "LOCKED" });
     });
   });
@@ -119,11 +119,11 @@ describe("changeDeliveryStatus (base réelle)", () => {
     await inRolledBackTx(async (tx) => {
       const { delivery, courier } = await seed(tx);
       const id = delivery.id;
-      await changeDeliveryStatus(tx, { deliveryId: id, to: "ASSIGNED", courierId: courier.id, actor: admin });
-      await changeDeliveryStatus(tx, { deliveryId: id, to: "PICKED_UP", actor: courierActor });
+      await changeDeliveryStatus(tx, { companyId: delivery.companyId, deliveryId: id, to: "ASSIGNED", courierId: courier.id, actor: admin });
+      await changeDeliveryStatus(tx, { companyId: delivery.companyId, deliveryId: id, to: "PICKED_UP", actor: courierActor });
 
       const forced = await changeDeliveryStatus(tx, {
-        deliveryId: id,
+        companyId: delivery.companyId,        deliveryId: id,
         to: "DELIVERED",
         proofMethod: "MANUAL",
         reason: "Client sans batterie, confirmé par appel",
@@ -142,9 +142,9 @@ describe("changeDeliveryStatus (base réelle)", () => {
   it("refuse si le statut a changé entre-temps (expectedFrom)", async () => {
     await inRolledBackTx(async (tx) => {
       const { delivery, courier } = await seed(tx);
-      await changeDeliveryStatus(tx, { deliveryId: delivery.id, to: "ASSIGNED", courierId: courier.id, actor: admin });
+      await changeDeliveryStatus(tx, { companyId: delivery.companyId, deliveryId: delivery.id, to: "ASSIGNED", courierId: courier.id, actor: admin });
       const err = await changeDeliveryStatus(tx, {
-        deliveryId: delivery.id,
+        companyId: delivery.companyId,        deliveryId: delivery.id,
         to: "CANCELLED",
         expectedFrom: "CREATED",
         actor: admin,
@@ -154,11 +154,24 @@ describe("changeDeliveryStatus (base réelle)", () => {
     });
   });
 
+  it("cloisonnement : une autre entreprise ne peut pas changer le statut", async () => {
+    await inRolledBackTx(async (tx) => {
+      const { delivery } = await seed(tx);
+      const [other] = await tx.insert(companies).values({ name: "Autre", slug: `autre-${crypto.randomUUID()}` }).returning();
+
+      await expect(
+        changeDeliveryStatus(tx, { companyId: other.id, deliveryId: delivery.id, to: "CANCELLED", actor: admin }),
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+      const [after] = await tx.select().from(deliveries).where(eq(deliveries.id, delivery.id));
+      expect(after.status).toBe("CREATED");
+    });
+  });
+
   it("refuse une affectation sans livreur", async () => {
     await inRolledBackTx(async (tx) => {
       const { delivery } = await seed(tx);
       await expect(
-        changeDeliveryStatus(tx, { deliveryId: delivery.id, to: "ASSIGNED", actor: admin }),
+        changeDeliveryStatus(tx, { companyId: delivery.companyId, deliveryId: delivery.id, to: "ASSIGNED", actor: admin }),
       ).rejects.toThrow(/livreur est obligatoire/);
     });
   });
