@@ -16,6 +16,9 @@ export function FirstAccessForm() {
           Vous vous connecterez avec votre numéro de téléphone et ce code PIN. Ne le donnez à personne, même à votre
           entreprise.
         </p>
+        <a href="/livreur/connexion" className="btn-primary mt-3 h-12 w-full text-base">
+          Se connecter
+        </a>
       </div>
     );
   }
