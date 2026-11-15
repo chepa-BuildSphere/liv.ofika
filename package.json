@@ -14,7 +14,9 @@
     "smoke:neon": "tsx scripts/smoke-neon.ts",
     "db:verify": "tsx scripts/verify-db.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:db": "vitest run --mode db",
+    "audit:verify": "tsx scripts/verify-audit.ts"
   },
   "dependencies": {
     "@neon/config": "^1.14.0",
