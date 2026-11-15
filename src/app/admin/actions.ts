@@ -2,12 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import {
-  clearAdminCookie,
-  getRequestMeta,
-  readAdminToken,
-  setAdminCookie,
-} from "@/lib/auth/admin-session";
+import { clearAdminCookie, readAdminToken, setAdminCookie } from "@/lib/auth/admin-session";
+import { getRequestMeta } from "@/lib/request-meta";
 import { loginPlatformAdmin, logoutPlatformAdmin } from "@/lib/auth/platform-admin";
 
 export type LoginState = { error?: string; email?: string };

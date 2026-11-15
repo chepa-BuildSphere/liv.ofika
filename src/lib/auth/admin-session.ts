@@ -1,10 +1,9 @@
 import "server-only";
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { db } from "@/db";
 import { getPlatformAdminBySession, type AdminIdentity } from "./platform-admin";
-import type { SessionMeta } from "./sessions";
 
 // Couche Next.js de l'auth admin plateforme : cookie + garde d'accès.
 // À appeler dans chaque page, Server Action et Route Handler du back-office :
@@ -43,10 +42,4 @@ export async function requireAdmin(): Promise<AdminIdentity> {
   const admin = await getCurrentAdmin();
   if (!admin) redirect("/admin/login");
   return admin;
-}
-
-export async function getRequestMeta(): Promise<SessionMeta> {
-  const h = await headers();
-  const forwarded = h.get("x-forwarded-for")?.split(",")[0]?.trim();
-  return { ip: forwarded || h.get("x-real-ip") || null, userAgent: h.get("user-agent") };
 }

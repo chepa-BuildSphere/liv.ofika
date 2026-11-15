@@ -8,13 +8,18 @@
 | Phase | État |
 |---|---|
 | **Phase 0 — Fondations** | ✅ Terminée (0.1 → 0.7) |
-| Phase 1 — Comptes et droits | 🔄 En cours : 1.1 faite → prochaine **tâche 1.2** (création d'une entreprise + de son premier admin) |
+| Phase 1 — Comptes et droits | 🔄 En cours : 1.1 et 1.2 faites → prochaine **tâche 1.3** (connexion des utilisateurs d'entreprise + sessions) |
 
 ### Détail de la phase 1
 
 | # | Tâche | Preuve |
 |---|---|---|
 | 1.1 | Connexion admin plateforme + back-office `/admin` | 7 tests base (`npm run test:db`) + test navigateur : redirection sans session, mauvais mot de passe refusé, connexion, déconnexion |
+| 1.2 | Création entreprise + premier admin, lien d'activation | 7 tests base + test navigateur : création, lien affiché, activation, lien réutilisé refusé, « Activé » au tableau de bord |
+
+**Création d'entreprise (1.2)** : `/admin/companies/new` crée l'entreprise, son admin (rôle `COMPANY_ADMIN`, sans mot de passe) et un **lien d'activation** à usage unique valable 48 h (table `user_access_tokens`, empreinte seulement), à copier ou envoyer par WhatsApp. L'admin entreprise choisit son mot de passe (≥ 10 caractères) sur `/activer/<jeton>`. Fiche `/admin/companies/<id>` : statut d'activation + « Générer un nouveau lien » (révoque l'ancien). Migration `0002_user_activation`.
+
+**Données de test laissées dans `dev`** : entreprise « Test E2E (dev) » (admin `awa.e2e@ofika.test`) et admins plateforme `e2e-admin@…` supprimé / `e2e-admin-12@ofika.test` désactivé. Le journal d'audit étant en ajout seul, ces traces restent : c'est voulu.
 
 **Auth admin plateforme (1.1)** : sessions en base (`sessions`), cookie `ofika_admin` httpOnly de 12 h contenant un jeton de 256 bits (seule son empreinte est en base), révocation immédiate. Blocage 15 min après 5 échecs (en mémoire : un seul processus). Connexions, échecs et déconnexions journalisés dans l'audit. Créer un compte : `npm run admin:create -- --email … --name "…"` (mot de passe généré, affiché une fois).
 
@@ -35,6 +40,7 @@
 1. **Échec avant d'arriver** : le §5 n'autorise `DELIVERY_FAILED` que depuis `ARRIVED`. Faut-il aussi l'autoriser depuis `PICKED_UP` (ex. « adresse incorrecte ») ?
 2. **Région Neon** : le projet est en `aws-us-east-1` (Virginie), loin d'Abidjan. À envisager : recréer en `aws-eu-central-1` (Francfort) avant la mise en production.
 3. `docs/mvp.md` prévoit PostgreSQL sur le VPS : la décision d'utiliser **Neon** n'y est pas encore reportée.
+4. **Identité visuelle** : aucune couleur ni logo défini (gris neutres + vert/orange/rouge pour les états). À fournir ou à créer.
 
 ## Reporté aux phases suivantes
 

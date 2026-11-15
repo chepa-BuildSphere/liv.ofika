@@ -1,5 +1,5 @@
 // Auth admin plateforme sur la base `dev`, dans une transaction annulée.
-import { eq } from "drizzle-orm";
+import { and, eq, gt, max } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { db, pool } from "@/db";
 import { auditEvents, platformAdmins } from "@/db/schema";
@@ -35,14 +35,23 @@ async function seedAdmin(tx: Executor) {
   });
 }
 
+// Seuls les événements créés pendant le test comptent (la base dev peut en contenir d'autres).
+let auditBaseline = 0;
 async function eventsOf(tx: Executor, type: string) {
-  return tx.select().from(auditEvents).where(eq(auditEvents.eventType, type));
+  return tx
+    .select()
+    .from(auditEvents)
+    .where(and(eq(auditEvents.eventType, type), gt(auditEvents.id, auditBaseline)));
 }
 
 beforeAll(() => {
   if (process.env.NEON_BRANCH === "production") throw new Error("Tests base interdits sur production");
 });
-beforeEach(() => resetThrottle());
+beforeEach(async () => {
+  resetThrottle();
+  const [row] = await db.select({ max: max(auditEvents.id) }).from(auditEvents);
+  auditBaseline = row.max ?? 0;
+});
 afterAll(async () => {
   await pool.end();
 });

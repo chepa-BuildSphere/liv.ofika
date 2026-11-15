@@ -7,6 +7,12 @@ export const userRoleEnum = pgEnum("user_role", [
   "RETURNS_OFFICER", // Responsable retours
 ]);
 
+// Usage d'un lien à usage unique envoyé à un utilisateur
+export const userAccessTokenPurposeEnum = pgEnum("user_access_token_purpose", [
+  "ACTIVATION", // choix du premier mot de passe
+  "PASSWORD_RESET", // mot de passe oublié (plus tard)
+]);
+
 // Statut d'une entreprise sur la plateforme
 export const companyStatusEnum = pgEnum("company_status", ["ACTIVE", "SUSPENDED"]);
 
