@@ -8,7 +8,7 @@
 | Phase | État |
 |---|---|
 | **Phase 0 — Fondations** | ✅ Terminée (0.1 → 0.7) |
-| Phase 1 — Comptes et droits | 🔄 En cours : 1.1 et 1.2 faites → prochaine **tâche 1.3** (connexion des utilisateurs d'entreprise + sessions) |
+| Phase 1 — Comptes et droits | 🔄 En cours : 1.1 → 1.3 faites → prochaine **tâche 1.4** (gestion des utilisateurs et rôles multiples) |
 
 ### Détail de la phase 1
 
@@ -16,6 +16,10 @@
 |---|---|---|
 | 1.1 | Connexion admin plateforme + back-office `/admin` | 7 tests base (`npm run test:db`) + test navigateur : redirection sans session, mauvais mot de passe refusé, connexion, déconnexion |
 | 1.2 | Création entreprise + premier admin, lien d'activation | 7 tests base + test navigateur : création, lien affiché, activation, lien réutilisé refusé, « Activé » au tableau de bord |
+
+| 1.3 | Connexion utilisateurs d'entreprise `/connexion` → `/espace` | 8 tests base + navigateur : redirection, connexion, back-office toujours fermé, déconnexion. Revue `security-review` : aucune faille retenue |
+
+**Connexion entreprise (1.3)** : cookie `ofika_session` distinct de `ofika_admin`, session 7 jours. Refus si compte non activé, désactivé, ou entreprise suspendue (vérifié à chaque requête : la suspension coupe l'accès tout de suite). Même blocage 15 min après 5 échecs.
 
 **Création d'entreprise (1.2)** : `/admin/companies/new` crée l'entreprise, son admin (rôle `COMPANY_ADMIN`, sans mot de passe) et un **lien d'activation** à usage unique valable 48 h (table `user_access_tokens`, empreinte seulement), à copier ou envoyer par WhatsApp. L'admin entreprise choisit son mot de passe (≥ 10 caractères) sur `/activer/<jeton>`. Fiche `/admin/companies/<id>` : statut d'activation + « Générer un nouveau lien » (révoque l'ancien). Migration `0002_user_activation`.
 

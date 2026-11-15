@@ -18,6 +18,12 @@ export function ActivateForm({ token, email, minLength }: { token: string; email
         <p className="mt-1 text-emerald-800 dark:text-emerald-300">
           Vous vous connecterez avec <strong>{state.email}</strong> et le mot de passe que vous venez de choisir.
         </p>
+        <a
+          href="/connexion"
+          className="mt-3 inline-flex h-10 items-center rounded-lg bg-zinc-900 px-4 font-medium text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900"
+        >
+          Se connecter
+        </a>
       </div>
     );
   }
