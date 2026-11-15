@@ -12,7 +12,9 @@
     "db:studio": "drizzle-kit studio",
     "typecheck": "tsc --noEmit",
     "smoke:neon": "tsx scripts/smoke-neon.ts",
-    "db:verify": "tsx scripts/verify-db.ts"
+    "db:verify": "tsx scripts/verify-db.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@neon/config": "^1.14.0",
@@ -41,6 +43,8 @@
     "eslint-config-next": "16.4.6",
     "tailwindcss": "4.3.3",
     "tsx": "^4.23.15",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.0"
   }
 }
