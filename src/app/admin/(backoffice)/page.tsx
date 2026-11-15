@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Back-office — Ofika" };
 
 export default function AdminHomePage() {
   return (
-    <Suspense fallback={<p className="text-sm text-zinc-500">Chargement…</p>}>
+    <Suspense fallback={<p className="text-sm text-ink-muted">Chargement…</p>}>
       <AdminDashboard />
     </Suspense>
   );
@@ -49,7 +49,7 @@ async function AdminDashboard() {
         <h1 className="text-2xl font-semibold tracking-tight">Bonjour {admin.name}</h1>
         <Link
           href="/admin/companies/new"
-          className="inline-flex h-10 items-center rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+          className="btn-primary"
         >
           Nouvelle entreprise
         </Link>
@@ -64,16 +64,16 @@ async function AdminDashboard() {
       <section className="mt-10">
         <h2 className="text-lg font-semibold">Entreprises</h2>
         {list.length === 0 ? (
-          <p className="mt-3 rounded-lg border border-dashed border-zinc-300 px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-700">
+          <p className="mt-3 rounded-lg border border-dashed border-line-strong px-4 py-8 text-center text-sm text-ink-muted">
             Aucune entreprise pour l&apos;instant.{" "}
-            <Link href="/admin/companies/new" className="font-medium text-zinc-900 underline dark:text-zinc-100">
+            <Link href="/admin/companies/new" className="font-medium text-ink underline">
               Créer la première
             </Link>
           </p>
         ) : (
-          <div className="mt-3 overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
+          <div className="mt-3 overflow-x-auto rounded-lg border border-line">
             <table className="w-full text-left text-sm">
-              <thead className="bg-zinc-50 text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
+              <thead className="bg-surface text-ink-muted">
                 <tr>
                   <th className="px-4 py-2 font-medium">Nom</th>
                   <th className="px-4 py-2 font-medium">Admin</th>
@@ -83,18 +83,18 @@ async function AdminDashboard() {
               </thead>
               <tbody>
                 {list.map((c) => (
-                  <tr key={c.id} className="border-t border-zinc-200 dark:border-zinc-800">
+                  <tr key={c.id} className="border-t border-line">
                     <td className="px-4 py-2">
                       <Link href={`/admin/companies/${c.id}`} className="font-medium hover:underline">
                         {c.name}
                       </Link>
-                      {c.status === "SUSPENDED" && <span className="ml-2 text-xs text-red-600">suspendue</span>}
+                      {c.status === "SUSPENDED" && <span className="ml-2 text-xs text-danger">suspendue</span>}
                     </td>
                     <td className="px-4 py-2">
                       {c.activeAdmins > 0 ? (
-                        <span className="text-emerald-700 dark:text-emerald-400">Activé</span>
+                        <span className="text-success">Activé</span>
                       ) : (
-                        <span className="text-amber-700 dark:text-amber-400">En attente d&apos;activation</span>
+                        <span className="text-warning">En attente d&apos;activation</span>
                       )}
                     </td>
                     <td className="px-4 py-2">
@@ -114,8 +114,8 @@ async function AdminDashboard() {
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg border border-zinc-200 px-4 py-3 dark:border-zinc-800">
-      <dt className="text-sm text-zinc-500">{label}</dt>
+    <div className="rounded-lg border border-line px-4 py-3">
+      <dt className="text-sm text-ink-muted">{label}</dt>
       <dd className="mt-1 text-2xl font-semibold tabular-nums">{value}</dd>
     </div>
   );

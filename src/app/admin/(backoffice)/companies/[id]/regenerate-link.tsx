@@ -17,12 +17,12 @@ export function RegenerateLink({ userId, userName, userPhone }: { userId: string
       <button
         type="submit"
         disabled={pending}
-        className="h-9 self-start rounded-lg border border-zinc-300 px-3 text-sm font-medium hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-700 dark:hover:bg-zinc-900"
+        className="btn-secondary self-start"
       >
         {pending ? "Génération…" : "Générer un nouveau lien"}
       </button>
-      <span className="text-xs text-zinc-500">L&apos;ancien lien ne fonctionnera plus.</span>
-      {state.status === "error" && <span className="text-sm text-red-600">{state.message}</span>}
+      <span className="text-xs text-ink-muted">L&apos;ancien lien ne fonctionnera plus.</span>
+      {state.status === "error" && <span className="text-sm text-danger">{state.message}</span>}
     </form>
   );
 }

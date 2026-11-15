@@ -21,10 +21,10 @@ const ROLE_LABEL: Record<string, string> = {
 export default function CompanyPage({ params }: { params: Promise<{ id: string }> }) {
   return (
     <>
-      <Link href="/admin" className="text-sm text-zinc-500 hover:underline">
+      <Link href="/admin" className="text-sm text-ink-muted hover:underline">
         ← Tableau de bord
       </Link>
-      <Suspense fallback={<p className="mt-4 text-sm text-zinc-500">Chargement…</p>}>
+      <Suspense fallback={<p className="mt-4 text-sm text-ink-muted">Chargement…</p>}>
         <CompanyDetail params={params} />
       </Suspense>
     </>
@@ -75,7 +75,7 @@ async function CompanyDetail({ params }: { params: Promise<{ id: string }> }) {
 
       <section className="mt-10">
         <h2 className="text-lg font-semibold">Utilisateurs</h2>
-        <ul className="mt-3 divide-y divide-zinc-200 rounded-lg border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+        <ul className="mt-3 divide-y divide-line rounded-lg border border-line">
           {members.map((m) => {
             const latest = tokens.find((t) => t.userId === m.id);
             const linkValid = latest && !latest.usedAt && !latest.revokedAt && latest.expiresAt > now;
@@ -83,11 +83,11 @@ async function CompanyDetail({ params }: { params: Promise<{ id: string }> }) {
               <li key={m.id} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="text-sm">
                   <p className="font-medium">{m.name}</p>
-                  <p className="text-zinc-600 dark:text-zinc-400">
+                  <p className="text-ink-muted">
                     {m.email}
                     {m.phone && ` · ${m.phone}`}
                   </p>
-                  <p className="mt-1 text-xs text-zinc-500">
+                  <p className="mt-1 text-xs text-ink-muted">
                     {roles
                       .filter((r) => r.userId === m.id)
                       .map((r) => ROLE_LABEL[r.role] ?? r.role)
@@ -95,16 +95,16 @@ async function CompanyDetail({ params }: { params: Promise<{ id: string }> }) {
                   </p>
                   <p className="mt-1 text-xs">
                     {m.activatedAt ? (
-                      <span className="text-emerald-700 dark:text-emerald-400">
+                      <span className="text-success">
                         Compte activé le {m.activatedAt.toLocaleDateString("fr-FR")}
                       </span>
                     ) : linkValid ? (
-                      <span className="text-amber-700 dark:text-amber-400">
+                      <span className="text-warning">
                         En attente : lien valable jusqu&apos;au{" "}
                         {latest.expiresAt.toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}
                       </span>
                     ) : (
-                      <span className="text-red-700 dark:text-red-400">Lien expiré : générez-en un nouveau</span>
+                      <span className="text-danger">Lien expiré : générez-en un nouveau</span>
                     )}
                   </p>
                 </div>
@@ -125,7 +125,7 @@ async function CompanyDetail({ params }: { params: Promise<{ id: string }> }) {
 function Info({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex gap-2">
-      <dt className="text-zinc-500">{label} :</dt>
+      <dt className="text-ink-muted">{label} :</dt>
       <dd className="font-medium">{value}</dd>
     </div>
   );

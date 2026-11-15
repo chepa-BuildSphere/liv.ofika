@@ -12,7 +12,7 @@ const ROLE_LABEL = {
 
 export default function EspacePage() {
   return (
-    <Suspense fallback={<p className="text-sm text-zinc-500">Chargement…</p>}>
+    <Suspense fallback={<p className="text-sm text-ink-muted">Chargement…</p>}>
       <Welcome />
     </Suspense>
   );
@@ -23,11 +23,11 @@ async function Welcome() {
   return (
     <>
       <h1 className="text-2xl font-semibold tracking-tight">Bonjour {user.name}</h1>
-      <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+      <p className="mt-2 text-sm text-ink-muted">
         Vous êtes connecté à l&apos;espace de <strong>{user.companyName}</strong>
         {user.roles.length > 0 && <> en tant que {user.roles.map((r) => ROLE_LABEL[r]).join(" et ")}</>}.
       </p>
-      <p className="mt-8 rounded-lg border border-dashed border-zinc-300 px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-700">
+      <p className="mt-8 rounded-lg border border-dashed border-line-strong px-4 py-8 text-center text-sm text-ink-muted">
         Les livraisons, livreurs et retours arrivent dans les prochaines étapes.
       </p>
     </>

@@ -44,7 +44,7 @@
 1. **Échec avant d'arriver** : le §5 n'autorise `DELIVERY_FAILED` que depuis `ARRIVED`. Faut-il aussi l'autoriser depuis `PICKED_UP` (ex. « adresse incorrecte ») ?
 2. **Région Neon** : le projet est en `aws-us-east-1` (Virginie), loin d'Abidjan. À envisager : recréer en `aws-eu-central-1` (Francfort) avant la mise en production.
 3. `docs/mvp.md` prévoit PostgreSQL sur le VPS : la décision d'utiliser **Neon** n'y est pas encore reportée.
-4. **Identité visuelle** : aucune couleur ni logo défini (gris neutres + vert/orange/rouge pour les états). À fournir ou à créer.
+4. **Logo** : pas encore de logo (signature texte « Ofika Delivery » en attendant). Couleurs décidées : voir `design-system.md`.
 
 ## Reporté aux phases suivantes
 

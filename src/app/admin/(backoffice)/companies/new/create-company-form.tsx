@@ -5,9 +5,6 @@ import { useActionState } from "react";
 import { ActivationLinkBox } from "../activation-link-box";
 import { createCompanyAction, type CreateCompanyState } from "../actions";
 
-const input =
-  "h-11 rounded-lg border border-zinc-300 bg-white px-3 text-base font-normal outline-none focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/10 aria-[invalid=true]:border-red-500 dark:border-zinc-700 dark:bg-zinc-900 dark:focus:border-zinc-100";
-
 export function CreateCompanyForm() {
   const [state, action, pending] = useActionState<CreateCompanyState, FormData>(createCompanyAction, {
     status: "idle",
@@ -56,14 +53,14 @@ export function CreateCompanyForm() {
         <Field label="Téléphone WhatsApp (facultatif)" name="adminPhone" type="tel" error={errors.adminPhone} defaultValue={values?.adminPhone} placeholder="+225 07 00 00 00 00" />
       </fieldset>
 
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+      <p className="text-sm text-ink-muted">
         Facturation par défaut : activée, 10 F CFA par livraison. Modifiable plus tard.
       </p>
 
       <button
         type="submit"
         disabled={pending}
-        className="h-11 rounded-lg bg-zinc-900 font-medium text-white hover:bg-zinc-700 disabled:opacity-60 sm:self-start sm:px-6 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+        className="btn-primary sm:self-start sm:px-6"
       >
         {pending ? "Création…" : "Créer l'entreprise et générer le lien"}
       </button>
@@ -89,8 +86,8 @@ function Field({
   return (
     <label className="flex flex-col gap-1.5 text-sm font-medium">
       {label}
-      <input name={name} type={type} aria-invalid={!!error} className={input} {...rest} />
-      {error && <span className="text-sm font-normal text-red-600 dark:text-red-400">{error}</span>}
+      <input name={name} type={type} aria-invalid={!!error} className="input" {...rest} />
+      {error && <span className="text-sm font-normal text-danger">{error}</span>}
     </label>
   );
 }

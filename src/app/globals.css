@@ -1,26 +1,94 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+ * Identité Ofika Delivery : fond blanc, texte noir, actions en orange.
+ * Système à trois niveaux (skill design-system) :
+ *   1. primitives  : les teintes brutes, définies une seule fois
+ *   2. sémantique  : le rôle de chaque couleur (fond, texte, marque…)
+ *   3. composants  : .btn-primary, .input, .card… construits sur la sémantique
+ * Pour changer une couleur : modifier le niveau 1 ou 2, jamais les pages.
+ *
+ * Contrastes vérifiés (WCAG AA, 4,5:1 minimum pour le texte) :
+ *   noir #0A0A0A sur blanc ........ 19,8:1
+ *   blanc sur orange #C2410C ...... 5,2:1  (boutons)
+ *   gris #52525B sur blanc ........ 7,7:1  (texte secondaire)
+ *   L'orange vif #EA580C (3,6:1 avec du blanc) est réservé aux accents
+ *   et aux grands éléments, jamais à du petit texte blanc.
+ */
+
+/* Mode clair uniquement : le fond blanc est l'identité du produit.
+   Les classes dark: ne s'activent qu'avec une classe .dark (jamais posée). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* ── 1. Primitives ─────────────────────────────────────────────── */
+  --color-orange-50: #fff7ed;
+  --color-orange-100: #ffedd5;
+  --color-orange-500: #f97316;
+  --color-orange-600: #ea580c;
+  --color-orange-700: #c2410c;
+  --color-orange-800: #9a3412;
+
+  /* ── 2. Sémantique ─────────────────────────────────────────────── */
+  --color-paper: #ffffff; /* fond principal */
+  --color-surface: #fafafa; /* fond secondaire (tableaux, zones) */
+  --color-ink: #0a0a0a; /* texte principal : noir */
+  --color-ink-muted: #52525b; /* texte secondaire */
+  --color-line: #e4e4e7; /* bordures */
+  --color-line-strong: #a1a1aa; /* bordures de champs */
+
+  --color-brand: var(--color-orange-600); /* accents, liens, focus */
+  --color-brand-strong: var(--color-orange-700); /* fond des boutons */
+  --color-brand-stronger: var(--color-orange-800); /* survol des boutons */
+  --color-brand-soft: var(--color-orange-50); /* fonds légers mis en avant */
+
+  --color-success: #15803d;
+  --color-success-soft: #f0fdf4;
+  --color-warning: #b45309;
+  --color-warning-soft: #fffbeb;
+  --color-danger: #b91c1c;
+  --color-danger-soft: #fef2f2;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ── 3. Composants ─────────────────────────────────────────────────── */
+@layer components {
+  /* Bouton d'action principal : orange */
+  .btn-primary {
+    @apply inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-lg bg-brand-strong px-5 font-medium text-white transition-colors duration-200 hover:bg-brand-stronger focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  /* Bouton secondaire : contour noir discret */
+  .btn-secondary {
+    @apply inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-lg border border-line-strong bg-paper px-3 text-sm font-medium text-ink transition-colors duration-200 hover:border-ink hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .input {
+    @apply h-11 rounded-lg border border-line-strong bg-paper px-3 text-base font-normal text-ink outline-none transition-colors placeholder:text-ink-muted/70 focus:border-brand focus:ring-2 focus:ring-brand/20 aria-[invalid=true]:border-danger;
+  }
+  .field-label {
+    @apply flex flex-col gap-1.5 text-sm font-medium text-ink;
+  }
+  .field-error {
+    @apply text-sm font-normal text-danger;
+  }
+  .card {
+    @apply rounded-lg border border-line bg-paper;
+  }
+  .link {
+    @apply font-medium text-brand-strong underline-offset-2 hover:underline;
+  }
+  .alert-error {
+    @apply rounded-lg border border-danger/20 bg-danger-soft px-3 py-2 text-sm text-danger;
   }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background: var(--color-orange-100);
 }

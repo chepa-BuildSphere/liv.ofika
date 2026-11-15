@@ -9,12 +9,12 @@ export const metadata: Metadata = { title: "Nouvelle entreprise — Ofika" };
 export default function NewCompanyPage() {
   return (
     <div className="max-w-xl">
-      <Link href="/admin" className="text-sm text-zinc-500 hover:underline">
+      <Link href="/admin" className="text-sm text-ink-muted hover:underline">
         ← Tableau de bord
       </Link>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight">Nouvelle entreprise</h1>
       <div className="mt-6">
-        <Suspense fallback={<p className="text-sm text-zinc-500">Chargement…</p>}>
+        <Suspense fallback={<p className="text-sm text-ink-muted">Chargement…</p>}>
           <Guarded />
         </Suspense>
       </div>
