@@ -1,0 +1,12 @@
+{
+  "title": "Cahier de Recette",
+  "platform": "Ofika Delivery",
+  "environment": "Développement (base Neon dev)",
+  "url": "http://localhost:5000",
+  "version": "Phase 1 - Comptes et droits (aa74036)",
+  "date": "15/11/2026",
+  "author": "Équipe Ofika Delivery",
+  "logo": "",
+  "primary_color": "#C2410C",
+  "accent_color": "#C2410C"
+}
