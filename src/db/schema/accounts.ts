@@ -102,9 +102,38 @@ export const couriers = pgTable("couriers", {
   pinHash: text("pin_hash"), // code PIN à 6 chiffres choisi par le livreur, haché
   pinFailedAttempts: integer("pin_failed_attempts").notNull().default(0),
   pinLockedUntil: timestamp("pin_locked_until", { withTimezone: true }),
+  pinSetAt: timestamp("pin_set_at", { withTimezone: true }), // premier accès fait
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// Code d'accès à 6 chiffres pour le premier accès du livreur (choix de son PIN).
+// Donné par l'entreprise au livreur. Seule l'empreinte (HMAC) est stockée.
+// Volontairement HORS des tables d'entreprise (tenantScope) : au premier accès,
+// le livreur n'est rattaché à aucun contexte d'entreprise ; on le retrouve par
+// son téléphone. `issuedByCompanyId` sert à la traçabilité.
+export const courierAccessCodes = pgTable(
+  "courier_access_codes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    courierId: uuid("courier_id")
+      .notNull()
+      .references(() => couriers.id),
+    codeHash: text("code_hash").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }), // remplacé, ou trop d'essais faux
+    failedAttempts: integer("failed_attempts").notNull().default(0),
+    issuedByCompanyId: uuid("issued_by_company_id")
+      .notNull()
+      .references(() => companies.id),
+    issuedByUserId: uuid("issued_by_user_id")
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("courier_access_codes_courier_idx").on(t.courierId)],
+);
 
 // Rattachement livreur ↔ entreprise (employé ou indépendant, par entreprise)
 export const companyCouriers = pgTable(

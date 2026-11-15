@@ -9,13 +9,17 @@
 |---|---|
 | **Phase 0 — Fondations** | ✅ Terminée (0.1 → 0.7) |
 | **Phase 1 — Comptes et droits** | ✅ Terminée (1.1 → 1.7) |
-| Phase 2 — Livreurs | 🔄 En cours : 2.1 faite → prochaine **tâche 2.2** (premier accès : le livreur choisit son PIN à 6 chiffres) |
+| Phase 2 — Livreurs | 🔄 En cours : 2.1 et 2.2 faites → prochaine **tâche 2.3** (connexion PWA téléphone + PIN, blocage après essais faux) |
 
 ### Détail de la phase 2
 
 | # | Tâche | Preuve |
 |---|---|---|
 | 2.1 | Ajouter / rattacher un livreur (`/espace/livreurs`) | 6 tests base (même téléphone écrit autrement = 1 livreur rattaché à 2 entreprises, type de contrat par entreprise, doublon refusé, rattachement après détachement, validations, droits) + 18 tests de numéros + navigateur |
+
+| 2.2 | Premier accès : code d'accès (option B) + PIN 6 chiffres | 7 tests base (PIN haché scrypt, code à usage unique, 5 faux = code annulé, expiré, remplacé, PIN facile refusé sans consommer le code, autre entreprise / resp. retours refusés) + 12 tests du PIN + navigateur mobile |
+
+**Premier accès (2.2)** : décision de l'utilisateur = **option B, code d'accès** (pas de SMS). L'entreprise obtient un code à 6 chiffres (48 h, usage unique, empreinte HMAC dans `courier_access_codes`, migration 0003) à l'ajout du livreur ou via « Nouveau code d'accès ». Le livreur va sur `/livreur/premier-acces` : téléphone + code + PIN (×2). PIN refusé s'il est trop facile (000000, 123456, 121212…). **Risque connu** : le code passant par l'entreprise, quelqu'un de l'entreprise pourrait choisir le PIN à la place du livreur et voir les colis de ses autres entreprises. **Parade** : un code n'est générable que tant que le livreur n'a pas de PIN ; ensuite plus aucune entreprise ne peut en générer. « PIN oublié » à traiter à part (vérification d'identité à définir, idéalement par SMS).
 
 **Livreurs (2.1)** : `src/lib/couriers/couriers.ts`. Le téléphone est normalisé (`normalizePhone`, format +2250707070707) : un numéro = un compte livreur sur toute la plateforme. Ajouter un numéro qui existe déjà le **rattache** sans changer son nom ; l'entreprise ne voit jamais ses autres rattachements. Type Employé / Indépendant propre à chaque entreprise. Admin entreprise + gestionnaire (`couriers.manage`).
 

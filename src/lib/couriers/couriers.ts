@@ -42,6 +42,8 @@ export type AddCourierResult = {
   created: boolean;
   /** true : il avait été détaché de cette entreprise, il est rattaché à nouveau. */
   reattached: boolean;
+  /** A déjà choisi son PIN (livreur existant) : pas de code d'accès à générer. */
+  hasPin: boolean;
   name: string;
   phone: string;
 };
@@ -101,7 +103,7 @@ export async function addCourier(db: Executor, actor: CompanyUserIdentity, input
       payload: { courierId, employmentType, reattached },
     });
 
-    return { courierId, created, reattached, name: courierName, phone };
+    return { courierId, created, reattached, hasPin: !!existing?.pinHash, name: courierName, phone };
   });
 }
 

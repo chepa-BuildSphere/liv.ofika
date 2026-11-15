@@ -1,15 +1,16 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { AccessCodeBox } from "./access-code-box";
 import { addCourierAction, type AddCourierState } from "./actions";
 
 /** Remonter le formulaire (nouvelle clé) le remet à zéro, état de l'action compris. */
-export function AddCourierForm() {
+export function AddCourierForm({ appUrl }: { appUrl: string }) {
   const [round, setRound] = useState(0);
-  return <Inner key={round} startOpen={round > 0} onAgain={() => setRound((n) => n + 1)} />;
+  return <Inner key={round} appUrl={appUrl} startOpen={round > 0} onAgain={() => setRound((n) => n + 1)} />;
 }
 
-function Inner({ startOpen, onAgain }: { startOpen: boolean; onAgain: () => void }) {
+function Inner({ appUrl, startOpen, onAgain }: { appUrl: string; startOpen: boolean; onAgain: () => void }) {
   const [open, setOpen] = useState(startOpen);
   const [state, action, pending] = useActionState<AddCourierState, FormData>(addCourierAction, { status: "idle" });
 
@@ -18,7 +19,9 @@ function Inner({ startOpen, onAgain }: { startOpen: boolean; onAgain: () => void
       <div className="flex flex-col gap-3">
         <p role="status" className="rounded-lg border border-success/30 bg-success-soft px-4 py-3 text-sm text-success">
           {state.message}
+          {!state.access && " Il a déjà son code PIN : il peut se connecter directement."}
         </p>
+        {state.access && <AccessCodeBox access={state.access} appUrl={appUrl} />}
         <button type="button" className="btn-secondary self-start" onClick={onAgain}>
           Ajouter un autre livreur
         </button>

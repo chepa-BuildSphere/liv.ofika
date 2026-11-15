@@ -6,7 +6,9 @@ import { can, userActor } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/user-session";
 import { listCouriers } from "@/lib/couriers/couriers";
 import { formatPhone } from "@/lib/validation";
+import { env } from "@/env";
 import { AddCourierForm } from "./add-courier-form";
+import { IssueCodeButton } from "./issue-code-button";
 
 export const metadata: Metadata = { title: "Livreurs — Ofika Delivery" };
 
@@ -46,7 +48,7 @@ async function Couriers() {
         Les livreurs se connectent avec leur téléphone et un code PIN à 6 chiffres qu&apos;ils choisissent eux-mêmes.
       </p>
       <div className="mt-6">
-        <AddCourierForm />
+        <AddCourierForm appUrl={env.appUrl} />
       </div>
 
       {attached.length === 0 ? (
@@ -56,19 +58,22 @@ async function Couriers() {
       ) : (
         <ul className="card mt-6 divide-y divide-line" aria-label="Livreurs rattachés">
           {attached.map((c) => (
-            <li key={c.id} className="flex flex-col gap-1 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="font-medium">{c.name}</p>
-                <p className="tabular-nums text-ink-muted">{formatPhone(c.phone)}</p>
+            <li key={c.id} className="flex flex-col gap-3 px-4 py-3 text-sm">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="font-medium">{c.name}</p>
+                  <p className="tabular-nums text-ink-muted">{formatPhone(c.phone)}</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full border border-line bg-surface px-2 py-0.5 text-xs">{TYPE_LABEL[c.employmentType]}</span>
+                  {c.hasPin ? (
+                    <span className="text-xs text-success">Code PIN choisi</span>
+                  ) : (
+                    <span className="text-xs text-warning">Premier accès à faire</span>
+                  )}
+                </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full border border-line bg-surface px-2 py-0.5 text-xs">{TYPE_LABEL[c.employmentType]}</span>
-                {c.hasPin ? (
-                  <span className="text-xs text-success">Code PIN choisi</span>
-                ) : (
-                  <span className="text-xs text-warning">Premier accès à faire</span>
-                )}
-              </div>
+              {!c.hasPin && <IssueCodeButton courierId={c.id} appUrl={env.appUrl} />}
             </li>
           ))}
         </ul>
