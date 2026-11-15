@@ -16,7 +16,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:db": "vitest run --mode db",
-    "audit:verify": "tsx scripts/verify-audit.ts"
+    "audit:verify": "tsx scripts/verify-audit.ts",
+    "admin:create": "tsx scripts/create-admin.ts"
   },
   "dependencies": {
     "@neon/config": "^1.14.0",

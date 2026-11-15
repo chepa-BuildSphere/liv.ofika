@@ -44,3 +44,6 @@ next-env.d.ts
 !.env.example
 
 .neon
+
+# captures des tests navigateur
+.playwright-mcp/

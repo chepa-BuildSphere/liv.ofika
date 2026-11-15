@@ -8,7 +8,15 @@
 | Phase | État |
 |---|---|
 | **Phase 0 — Fondations** | ✅ Terminée (0.1 → 0.7) |
-| Phase 1 — Comptes et droits | ⏭ Prochaine : **tâche 1.1** (connexion admin plateforme + back-office minimal) |
+| Phase 1 — Comptes et droits | 🔄 En cours : 1.1 faite → prochaine **tâche 1.2** (création d'une entreprise + de son premier admin) |
+
+### Détail de la phase 1
+
+| # | Tâche | Preuve |
+|---|---|---|
+| 1.1 | Connexion admin plateforme + back-office `/admin` | 7 tests base (`npm run test:db`) + test navigateur : redirection sans session, mauvais mot de passe refusé, connexion, déconnexion |
+
+**Auth admin plateforme (1.1)** : sessions en base (`sessions`), cookie `ofika_admin` httpOnly de 12 h contenant un jeton de 256 bits (seule son empreinte est en base), révocation immédiate. Blocage 15 min après 5 échecs (en mémoire : un seul processus). Connexions, échecs et déconnexions journalisés dans l'audit. Créer un compte : `npm run admin:create -- --email … --name "…"` (mot de passe généré, affiché une fois).
 
 ### Détail de la phase 0
 
@@ -33,6 +41,8 @@
 - Numérotation des tentatives (`delivery_attempts`) lors d'une nouvelle tentative.
 - Prix facturé (`billed_price`) figé au passage à `DELIVERED`.
 - Ancrage externe du journal d'audit (détecter la suppression des derniers événements).
+- `npx eslint src` ne se termine pas (bloqué > 5 min) : à diagnostiquer.
+- Blocage des essais de connexion en mémoire : à passer en base si l'app tourne sur plusieurs processus.
 - La fonction Neon `hello` est publique (renvoie seulement un état de santé) : les vraies fonctions devront exiger une authentification.
 
 ## Organisation technique
@@ -57,6 +67,7 @@
 | `npm run db:verify` | Vérifier tables, triggers et protection de l'audit |
 | `npm run audit:verify` | Vérifier l'intégrité de la chaîne d'audit |
 | `npm run smoke:neon` | Tester Postgres + Function + Realtime (app lancée) |
+| `npm run admin:create -- --email … --name "…"` | Créer un admin plateforme (mot de passe affiché une fois) |
 
 ### Secrets
 - `.env.local` (jamais commité) : variables Neon + `APP_URL` + `ENCRYPTION_KEY`.
