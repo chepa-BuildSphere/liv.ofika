@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { ActivationLinkBox } from "../activation-link-box";
+import { ActivationLinkBox } from "@/components/activation-link-box";
 import { regenerateLinkAction, type RegenerateState } from "../actions";
 
 export function RegenerateLink({ userId, userName, userPhone }: { userId: string; userName: string; userPhone: string | null }) {

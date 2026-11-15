@@ -3,6 +3,7 @@ import { companies, userRoles, users } from "@/db/schema";
 import { logEvent, type Executor } from "@/lib/audit";
 import { issueActivationToken } from "@/lib/auth/activation";
 import { normalizeEmail } from "@/lib/auth/platform-admin";
+import { EMAIL_RE, PHONE_RE } from "@/lib/validation";
 
 // Création d'une entreprise et de son premier admin, par l'admin plateforme
 // (mvp.md §4.2, note ¹ : l'admin plateforme crée seulement le premier admin).
@@ -16,9 +17,6 @@ export type CreateCompanyInput = {
 };
 
 export type FieldErrors = Partial<Record<keyof CreateCompanyInput, string>>;
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-const PHONE_RE = /^\+?[0-9 ]{8,20}$/;
 
 export function validateCreateCompany(input: CreateCompanyInput): FieldErrors {
   const errors: FieldErrors = {};

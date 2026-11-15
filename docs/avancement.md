@@ -8,7 +8,7 @@
 | Phase | État |
 |---|---|
 | **Phase 0 — Fondations** | ✅ Terminée (0.1 → 0.7) |
-| Phase 1 — Comptes et droits | 🔄 En cours : 1.1 → 1.3 faites → prochaine **tâche 1.4** (gestion des utilisateurs et rôles multiples) |
+| Phase 1 — Comptes et droits | 🔄 En cours : 1.1 → 1.4 faites → prochaine **tâche 1.5** (garde unique des droits côté serveur, matrice §4.2) |
 
 ### Détail de la phase 1
 
@@ -18,6 +18,10 @@
 | 1.2 | Création entreprise + premier admin, lien d'activation | 7 tests base + test navigateur : création, lien affiché, activation, lien réutilisé refusé, « Activé » au tableau de bord |
 
 | 1.3 | Connexion utilisateurs d'entreprise `/connexion` → `/espace` | 8 tests base + navigateur : redirection, connexion, back-office toujours fermé, déconnexion. Revue `security-review` : aucune faille retenue |
+
+| 1.4 | Équipe : invitation, rôles multiples, désactivation (`/espace/equipe`) | 9 tests base (dont gestionnaire + resp. retours, autre entreprise refusée, dernier admin protégé) + navigateur |
+
+**Équipe (1.4)** : réservé à l'admin entreprise (`src/lib/team/team.ts`). Invitation = même lien d'activation 48 h. Rôles cumulables. Garde-fous : toujours au moins un admin actif (entreprise verrouillée pendant la modification), on ne se désactive pas soi-même, un utilisateur d'une autre entreprise est « introuvable ». Désactiver coupe immédiatement sessions et liens.
 
 **Connexion entreprise (1.3)** : cookie `ofika_session` distinct de `ofika_admin`, session 7 jours. Refus si compte non activé, désactivé, ou entreprise suspendue (vérifié à chaque requête : la suspension coupe l'accès tout de suite). Même blocage 15 min après 5 échecs.
 

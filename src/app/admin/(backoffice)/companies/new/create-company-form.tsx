@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { ActivationLinkBox } from "../activation-link-box";
+import { ActivationLinkBox } from "@/components/activation-link-box";
 import { createCompanyAction, type CreateCompanyState } from "../actions";
 
 export function CreateCompanyForm() {

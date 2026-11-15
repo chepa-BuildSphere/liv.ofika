@@ -35,6 +35,11 @@ async function UserMenu() {
   const user = await requireUser();
   return (
     <div className="flex items-center gap-3">
+      {user.roles.includes("COMPANY_ADMIN") && (
+        <Link href="/espace/equipe" className="link text-sm">
+          Équipe
+        </Link>
+      )}
       <span className="hidden text-sm text-ink-muted sm:inline">{user.name}</span>
       <form action={userLogoutAction}>
         <button

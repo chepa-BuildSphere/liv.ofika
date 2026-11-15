@@ -14,7 +14,8 @@ export default defineConfig(({ mode }) => {
       setupFiles: ["./vitest.setup.ts"],
       include: withDb ? ["src/**/*.db.test.ts"] : ["src/**/*.test.ts"],
       exclude: withDb ? ["node_modules/**"] : ["src/**/*.db.test.ts", "node_modules/**"],
-      testTimeout: 30_000,
+      // Base Neon distante (us-east-1) + scrypt volontairement lent : marge large
+      testTimeout: withDb ? 120_000 : 30_000,
       fileParallelism: !withDb,
     },
   };
