@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
+import { can, userActor } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/user-session";
 import { userLogoutAction } from "./actions";
 import { Wordmark } from "@/components/wordmark";
@@ -35,7 +36,7 @@ async function UserMenu() {
   const user = await requireUser();
   return (
     <div className="flex items-center gap-3">
-      {user.roles.includes("COMPANY_ADMIN") && (
+      {can(userActor(user), "company.manageUsers", { companyId: user.companyId }).allowed && (
         <Link href="/espace/equipe" className="link text-sm">
           Équipe
         </Link>

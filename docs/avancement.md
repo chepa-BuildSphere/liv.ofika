@@ -8,7 +8,7 @@
 | Phase | État |
 |---|---|
 | **Phase 0 — Fondations** | ✅ Terminée (0.1 → 0.7) |
-| Phase 1 — Comptes et droits | 🔄 En cours : 1.1 → 1.4 faites → prochaine **tâche 1.5** (garde unique des droits côté serveur, matrice §4.2) |
+| Phase 1 — Comptes et droits | 🔄 En cours : 1.1 → 1.5 faites → prochaine **tâche 1.6** (cloisonnement : filtre `company_id` obligatoire) |
 
 ### Détail de la phase 1
 
@@ -20,6 +20,10 @@
 | 1.3 | Connexion utilisateurs d'entreprise `/connexion` → `/espace` | 8 tests base + navigateur : redirection, connexion, back-office toujours fermé, déconnexion. Revue `security-review` : aucune faille retenue |
 
 | 1.4 | Équipe : invitation, rôles multiples, désactivation (`/espace/equipe`) | 9 tests base (dont gestionnaire + resp. retours, autre entreprise refusée, dernier admin protégé) + navigateur |
+
+| 1.5 | Garde unique des droits `src/lib/auth/permissions.ts` | 45 tests : les 29 lignes de la matrice §4.2 × 6 acteurs, périmètres 🔸, cloisonnement, règle 6, refus par défaut. Revue `security-review` : aucune faille |
+
+**Droits (1.5)** : toute décision passe par `can(acteur, action, ressource)` / `assertCan(...)`. La matrice est une table (une ligne par action) ; refus par défaut ; l'admin plateforme lit en « support » (`supportAccess`, à journaliser en 1.7). Le test recopie la matrice du document avec ses symboles et vérifie que garde et matrice ont les mêmes actions. Règle 6 : l'acteur porte `courierId` si l'utilisateur est aussi livreur — **le rapprochement utilisateur ↔ livreur reste à faire en phase 2**. Le service de statut (0.7) sera branché sur la garde quand les écrans de livraison existeront (phase 3).
 
 **Équipe (1.4)** : réservé à l'admin entreprise (`src/lib/team/team.ts`). Invitation = même lien d'activation 48 h. Rôles cumulables. Garde-fous : toujours au moins un admin actif (entreprise verrouillée pendant la modification), on ne se désactive pas soi-même, un utilisateur d'une autre entreprise est « introuvable ». Désactiver coupe immédiatement sessions et liens.
 

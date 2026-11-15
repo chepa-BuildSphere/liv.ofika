@@ -11,7 +11,8 @@ import { createSession, findValidSession, revokeSession, type SessionMeta } from
 
 export const USER_SESSION_TTL_MS = 7 * 24 * 60 * 60_000; // 7 jours
 
-export type UserRole = "COMPANY_ADMIN" | "MANAGER" | "RETURNS_OFFICER";
+import type { UserRole } from "./permissions";
+export type { UserRole };
 
 export type CompanyUserIdentity = {
   id: string;

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { db } from "@/db";
+import { can, userActor } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/user-session";
 import { listTeam } from "@/lib/team/team";
 import { InviteForm } from "./invite-form";
@@ -26,7 +27,7 @@ export default function TeamPage() {
 async function Team() {
   const user = await requireUser();
 
-  if (!user.roles.includes("COMPANY_ADMIN")) {
+  if (!can(userActor(user), "company.manageUsers", { companyId: user.companyId }).allowed) {
     return (
       <p role="alert" className="mt-6 rounded-lg border border-warning/30 bg-warning-soft p-4 text-sm text-warning">
         La gestion de l&apos;équipe est réservée à l&apos;admin de l&apos;entreprise.

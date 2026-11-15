@@ -3,6 +3,7 @@ import { companies, sessions, userAccessTokens, userRoles, users } from "@/db/sc
 import { logEvent, type Executor } from "@/lib/audit";
 import { issueActivationToken } from "@/lib/auth/activation";
 import type { CompanyUserIdentity, UserRole } from "@/lib/auth/company-user";
+import { can, userActor } from "@/lib/auth/permissions";
 import { normalizeEmail } from "@/lib/auth/platform-admin";
 import { EMAIL_RE, PHONE_HINT, PHONE_RE } from "@/lib/validation";
 
@@ -27,8 +28,9 @@ export class TeamError extends Error {
   }
 }
 
+/** Droit vérifié par la garde unique (permissions.ts, ligne « Gérer les utilisateurs »). */
 function assertAdmin(actor: CompanyUserIdentity) {
-  if (!actor.roles.includes("COMPANY_ADMIN")) {
+  if (!can(userActor(actor), "company.manageUsers", { companyId: actor.companyId }).allowed) {
     throw new TeamError("FORBIDDEN", "Réservé à l'admin de l'entreprise.");
   }
 }

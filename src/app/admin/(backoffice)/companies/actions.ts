@@ -3,6 +3,7 @@
 import { db } from "@/db";
 import { activationUrl } from "@/lib/app-url";
 import { requireAdmin } from "@/lib/auth/admin-session";
+import { assertCan, platformAdminActor } from "@/lib/auth/permissions";
 import {
   createCompanyWithAdmin,
   regenerateActivationLink,
@@ -19,6 +20,7 @@ export type CreateCompanyState =
 
 export async function createCompanyAction(_prev: CreateCompanyState, formData: FormData): Promise<CreateCompanyState> {
   const admin = await requireAdmin(); // re-vérifié ici : ne jamais se fier au formulaire
+  assertCan(platformAdminActor(admin), "company.createOrSuspend", undefined);
 
   const values: CreateCompanyInput = {
     companyName: String(formData.get("companyName") ?? ""),
