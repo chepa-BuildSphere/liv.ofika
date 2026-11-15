@@ -29,8 +29,8 @@ ofika-delivery/
 ```
 
 ## Par où commencer
-1. Lire `docs/mvp.md`.
-2. Suivre `docs/taches-mvp.md`, phase 0, tâche 0.1.
+1. Lire `docs/avancement.md` : où on en est, commandes utiles, questions ouvertes.
+2. Lire `docs/mvp.md` (le quoi) et suivre `docs/taches-mvp.md` (l'ordre des tâches).
 
 ## Stack
-Next.js (web + PWA + API) · PostgreSQL · Drizzle · hébergement VPS.
+Next.js (web + PWA + API) · PostgreSQL (Neon) · Drizzle · hébergement VPS.

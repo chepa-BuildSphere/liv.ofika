@@ -1,0 +1,63 @@
+# Avancement du projet
+
+> Mis à jour le 15/11/2026. À relire en début de session.
+> Le découpage des tâches est dans `taches-mvp.md`.
+
+## Où on en est
+
+| Phase | État |
+|---|---|
+| **Phase 0 — Fondations** | ✅ Terminée (0.1 → 0.7) |
+| Phase 1 — Comptes et droits | ⏭ Prochaine : **tâche 1.1** (connexion admin plateforme + back-office minimal) |
+
+### Détail de la phase 0
+
+| # | Tâche | Commit | Preuve |
+|---|---|---|---|
+| 0.1 | Projet Next.js 16 + dépôt GitHub | `0f24959` | `npm run dev` répond |
+| 0.2 | Neon + Drizzle, migrations générées | `61b3a22` | `drizzle/0000_init.sql` (22 tables) |
+| 0.3 | Migrations + protections SQL appliquées sur `dev` | `61b3a22` | `npm run db:verify` : UPDATE/DELETE/TRUNCATE `audit_events` refusés |
+| 0.4 | `.env.example` + `src/env.ts` | `18813ad` | Aucun secret dans le dépôt ni l'historique |
+| 0.5 | Fonctions de sécurité `src/lib/security/` | `4b38fd1` | 24 tests unitaires |
+| 0.6 | Journal d'audit chaîné `src/lib/audit/` | `9e9ab91` | Ligne modifiée à la main détectée (`npm run test:db`) |
+| 0.7 | Service de statut `src/lib/deliveries/` | `8dd66cc` | `CREATED → DELIVERED` refusé, 81 transitions testées |
+
+## Questions ouvertes
+
+1. **Échec avant d'arriver** : le §5 n'autorise `DELIVERY_FAILED` que depuis `ARRIVED`. Faut-il aussi l'autoriser depuis `PICKED_UP` (ex. « adresse incorrecte ») ?
+2. **Région Neon** : le projet est en `aws-us-east-1` (Virginie), loin d'Abidjan. À envisager : recréer en `aws-eu-central-1` (Francfort) avant la mise en production.
+3. `docs/mvp.md` prévoit PostgreSQL sur le VPS : la décision d'utiliser **Neon** n'y est pas encore reportée.
+
+## Reporté aux phases suivantes
+
+- Numérotation des tentatives (`delivery_attempts`) lors d'une nouvelle tentative.
+- Prix facturé (`billed_price`) figé au passage à `DELIVERED`.
+- Ancrage externe du journal d'audit (détecter la suppression des derniers événements).
+- La fonction Neon `hello` est publique (renvoie seulement un état de santé) : les vraies fonctions devront exiger une authentification.
+
+## Organisation technique
+
+### Git / GitHub
+- Dépôt : `chepa-BuildSphere/liv.ofika`. Branche par défaut et de travail : **`develop`**. `main` = production.
+- Un commit par tâche, poussé sur `develop`.
+
+### Neon (base de données)
+- Projet `ofika-delivery` (`wandering-bar-66611848`), région `aws-us-east-1`.
+- Branche **`dev`** : liée au dossier local (`.neon`, `.env.local`), migrations appliquées. On développe et on teste ici.
+- Branche **`production`** : vide, **ne pas y toucher** avant la mise en ligne. Ce jour-là : `neon checkout production` puis `npm run db:migrate`.
+- Services déclarés dans `neon.ts` : Postgres, Functions (`hello`), Realtime.
+
+### Commandes utiles
+| Commande | Rôle |
+|---|---|
+| `npm run dev` | App en local sur http://localhost:5000 |
+| `npm test` | Tests unitaires (sans réseau) |
+| `npm run test:db` | Tests sur la base `dev` (transaction annulée, refuse `production`) |
+| `npm run db:generate` / `db:migrate` | Créer / appliquer les migrations |
+| `npm run db:verify` | Vérifier tables, triggers et protection de l'audit |
+| `npm run audit:verify` | Vérifier l'intégrité de la chaîne d'audit |
+| `npm run smoke:neon` | Tester Postgres + Function + Realtime (app lancée) |
+
+### Secrets
+- `.env.local` (jamais commité) : variables Neon + `APP_URL` + `ENCRYPTION_KEY`.
+- **`ENCRYPTION_KEY` doit être sauvegardée** : la perdre rend illisibles les secrets webhook chiffrés.
