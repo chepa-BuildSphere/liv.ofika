@@ -6,6 +6,8 @@ import { Suspense } from "react";
 import { db } from "@/db";
 import { companies, userAccessTokens, userRoles, users } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth/admin-session";
+import { getRequestMeta } from "@/lib/request-meta";
+import { logSupportView } from "@/lib/support/support-view";
 import { RegenerateLink } from "./regenerate-link";
 
 export const metadata: Metadata = { title: "Entreprise — Ofika" };
@@ -32,12 +34,15 @@ export default function CompanyPage({ params }: { params: Promise<{ id: string }
 }
 
 async function CompanyDetail({ params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const { id } = await params;
   if (!UUID_RE.test(id)) notFound();
 
   const [company] = await db.select().from(companies).where(eq(companies.id, id)).limit(1);
   if (!company) notFound();
+
+  // Règle 9 : consultation support journalisée, visible par l'entreprise
+  await logSupportView(db, { platformAdmin: admin, companyId: company.id, view: "company_detail", ...(await getRequestMeta()) });
 
   const members = await db
     .select({ id: users.id, name: users.name, email: users.email, phone: users.phone, activatedAt: users.activatedAt, isActive: users.isActive })
@@ -62,6 +67,9 @@ async function CompanyDetail({ params }: { params: Promise<{ id: string }> }) {
   return (
     <>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight">{company.name}</h1>
+      <p className="mt-1 text-xs text-ink-muted">
+        Consultation support enregistrée et visible par l&apos;entreprise.
+      </p>
       <dl className="mt-4 grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
         <Info label="Identifiant" value={company.slug} />
         <Info label="Statut" value={company.status === "ACTIVE" ? "Active" : "Suspendue"} />

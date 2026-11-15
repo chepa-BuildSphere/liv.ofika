@@ -8,7 +8,8 @@
 | Phase | État |
 |---|---|
 | **Phase 0 — Fondations** | ✅ Terminée (0.1 → 0.7) |
-| Phase 1 — Comptes et droits | 🔄 En cours : 1.1 → 1.6 faites → prochaine **tâche 1.7** (journalisation des consultations du support, `SUPPORT_VIEW`) |
+| **Phase 1 — Comptes et droits** | ✅ Terminée (1.1 → 1.7) |
+| Phase 2 — Livreurs | ⏭ Prochaine (après le cahier de recette de la phase 1, à valider) |
 
 ### Détail de la phase 1
 
@@ -24,6 +25,10 @@
 | 1.5 | Garde unique des droits `src/lib/auth/permissions.ts` | 45 tests : les 29 lignes de la matrice §4.2 × 6 acteurs, périmètres 🔸, cloisonnement, règle 6, refus par défaut. Revue `security-review` : aucune faille |
 
 | 1.6 | Cloisonnement : `tenantScope` + garde statique du code | 6 tests base (A ne voit rien de B sur les 10 tables d'entreprise, tentatives, lecture/modif par identifiant, insertion détournée) + 5 tests de la garde statique |
+
+| 1.7 | Consultations du support journalisées (`SUPPORT_VIEW`) | 5 tests base (journalisé, visible par l'admin, pas de doublon en 5 min, invisible pour une autre entreprise, gestionnaire oui / resp. retours non) + navigateur |
+
+**Support (1.7)** : ouvrir la fiche d'une entreprise dans le back-office enregistre `SUPPORT_VIEW` dans l'audit de cette entreprise (`src/lib/support/support-view.ts`), sans doublon si l'on recharge dans les 5 min. L'espace entreprise affiche « Consultations du support Ofika » (qui, quoi, quand) aux rôles autorisés par `audit.view`. Le tableau de bord (liste des entreprises) n'est pas journalisé : c'est le pilotage de la plateforme. Tout nouvel écran du back-office qui montre des données d'entreprise doit appeler `logSupportView`.
 
 **Cloisonnement (1.6)** : toute requête sur une table d'entreprise passe par `tenantScope(db, companyId)` (`src/lib/tenant/scope.ts`) : filtre imposé en lecture/mise à jour, `company_id` forcé à l'insertion et non modifiable. Le test `tenant-guard.test.ts` lit tout le code et échoue sur une requête directe non justifiée (exceptions listées avec leur raison, ou commentaire `tenant-guard: <raison>`). Pas de RLS PostgreSQL : incompatible avec Neon Realtime. **Trou corrigé** : `changeDeliveryStatus` exige maintenant `companyId` (une livraison d'une autre entreprise est « introuvable »).
 

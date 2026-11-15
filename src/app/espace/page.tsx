@@ -1,14 +1,10 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { requireUser } from "@/lib/auth/user-session";
+import { ROLE_LABEL } from "./equipe/roles";
+import { SupportViews } from "./support-views";
 
 export const metadata: Metadata = { title: "Mon espace — Ofika Delivery" };
-
-const ROLE_LABEL = {
-  COMPANY_ADMIN: "Admin entreprise",
-  MANAGER: "Gestionnaire",
-  RETURNS_OFFICER: "Responsable retours",
-} as const;
 
 export default function EspacePage() {
   return (
@@ -30,6 +26,7 @@ async function Welcome() {
       <p className="mt-8 rounded-lg border border-dashed border-line-strong px-4 py-8 text-center text-sm text-ink-muted">
         Les livraisons, livreurs et retours arrivent dans les prochaines étapes.
       </p>
+      <SupportViews user={user} />
     </>
   );
 }
