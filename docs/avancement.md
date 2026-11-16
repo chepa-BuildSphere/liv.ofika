@@ -9,7 +9,8 @@
 |---|---|
 | **Phase 0 — Fondations** | ✅ Terminée (0.1 → 0.7) |
 | **Phase 1 — Comptes et droits** | ✅ Terminée (1.1 → 1.7) |
-| Phase 2 — Livreurs | 🔄 En cours : 2.1 → 2.4 faites → prochaine **tâche 2.5** (détacher un livreur) |
+| **Phase 2 — Livreurs** | ✅ Terminée (2.1 → 2.5) |
+| Phase 3 — Livraisons (côté entreprise) | 🔄 À suivre : **tâche 3.1** (créer une livraison à la main) |
 
 ### Détail de la phase 2
 
@@ -22,6 +23,10 @@
 | 2.3 | Connexion livreur `/livreur/connexion` → `/livreur` | 7 tests base (connexion, 5 PIN faux = bloqué 15 min en base, compteur remis à zéro, numéro inconnu / sans PIN / désactivé = même message, déconnexion, entreprise détachée ou suspendue retirée, sessions cloisonnées) + navigateur mobile |
 
 | 2.4 | Empreinte de l'appareil du livreur à la connexion | 8 tests base (empreinte enregistrée dans `sessions.device_fingerprint` et dans l'audit `COURIER_LOGIN`, renvoyée par la session, distincte d'un appareil à l'autre) + 6 tests unitaires (SHA-256 déterministe, portrait = paysage, langue normalisée, parsing défensif) |
+
+| 2.5 | Détacher un livreur + rapprochement règle 6 | 9 tests base (`detachCourier` passe `attached = false`, journalise `COURIER_DETACHED`, révoque les codes en attente, retire immédiatement l'entreprise de la session livreur et bloque `courierActor`, refus si déjà détaché / autre entreprise / resp. retours ; règle 6 : `CompanyUserIdentity.courierId` chargé à la connexion par téléphone et bloquant `forceDelivered` / `return.receive` sur ses propres colis) |
+
+**Détachement & règle 6 (2.5)** : `detachCourier` dans `src/lib/couriers/couriers.ts` + bouton avec confirmation sur `/espace/livreurs` (`src/app/espace/livreurs/detach-courier-button.tsx`). Désactive `company_couriers`, révoque les codes d'accès non utilisés émis par cette entreprise et journalise `COURIER_DETACHED`. Côté session livreur (`getCourierBySession`) et droits (`courierActor` dans `src/lib/auth/permissions.ts`), l'entreprise détachée disparaît immédiatement sans couper ses autres entreprises. Règle 6 bouclée : `loadIdentity` (`src/lib/auth/company-user.ts`) rapproche l'utilisateur et le compte livreur ayant le même numéro normalisé pour remplir `CompanyUserIdentity.courierId`.
 
 **Empreinte d'appareil (2.4)** : `src/lib/security/device-fingerprint.ts` + `src/lib/device-signals-client.ts`. À la connexion (`/livreur/connexion`), le navigateur envoie les signaux de l'appareil (User-Agent, plateforme, écran normalisé portrait/paysage, langue, fuseau horaire, cœurs, points tactiles), complétés par les en-têtes HTTP (`User-Agent`, `Sec-CH-UA-*`, `Accept-Language`). Le serveur calcule une empreinte SHA-256 déterministe et l'enregistre dans `sessions.device_fingerprint` et dans l'événement d'audit `COURIER_LOGIN`. Exposée sur `CourierIdentity.deviceFingerprint` pour la génération et le contrôle du QR en phase 4.
 

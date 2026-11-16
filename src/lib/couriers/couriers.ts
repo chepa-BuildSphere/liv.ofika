@@ -1,5 +1,5 @@
-import { and, asc, eq } from "drizzle-orm";
-import { companyCouriers, couriers } from "@/db/schema";
+import { and, asc, eq, isNull } from "drizzle-orm";
+import { companyCouriers, courierAccessCodes, couriers } from "@/db/schema";
 import { logEvent, type Executor } from "@/lib/audit";
 import type { CompanyUserIdentity } from "@/lib/auth/company-user";
 import { can, userActor } from "@/lib/auth/permissions";
@@ -15,7 +15,7 @@ import { normalizePhone, PHONE_HINT } from "@/lib/validation";
 
 export type EmploymentType = "EMPLOYEE" | "INDEPENDENT";
 
-export type CourierErrorCode = "FORBIDDEN" | "INVALID" | "ALREADY_ATTACHED";
+export type CourierErrorCode = "FORBIDDEN" | "INVALID" | "ALREADY_ATTACHED" | "NOT_FOUND";
 
 export class CourierError extends Error {
   constructor(
@@ -139,4 +139,63 @@ export async function listCouriers(db: Executor, actor: CompanyUserIdentity): Pr
     .orderBy(asc(couriers.name));
 
   return rows.map(({ pinHash, ...r }) => ({ ...r, hasPin: pinHash !== null }));
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Détache un livreur de l'entreprise : il disparaît de ses accès et ne voit
+ * plus ses colis, tout en conservant son compte Ofika et ses autres entreprises.
+ */
+export async function detachCourier(
+  db: Executor,
+  actor: CompanyUserIdentity,
+  courierId: string,
+): Promise<{ courierId: string; name: string }> {
+  assertCanManage(actor);
+  if (!UUID_RE.test(courierId)) {
+    throw new CourierError("NOT_FOUND", "Livreur introuvable.");
+  }
+
+  return db.transaction(async (tx) => {
+    const [link] = await tenantScope(tx, actor.companyId).selectAll(
+      companyCouriers,
+      eq(companyCouriers.courierId, courierId),
+    );
+    if (!link || !link.isActive) {
+      throw new CourierError("NOT_FOUND", "Livreur introuvable.");
+    }
+
+    const [courier] = await tx.select({ name: couriers.name }).from(couriers).where(eq(couriers.id, courierId)).limit(1);
+    const now = new Date();
+
+    await tenantScope(tx, actor.companyId).update(
+      companyCouriers,
+      { isActive: false, detachedAt: now },
+      eq(companyCouriers.courierId, courierId),
+    );
+
+    // Révoque les éventuels codes de premier accès émis par cette entreprise
+    await tx
+      .update(courierAccessCodes)
+      .set({ revokedAt: now })
+      .where(
+        and(
+          eq(courierAccessCodes.courierId, courierId),
+          eq(courierAccessCodes.issuedByCompanyId, actor.companyId),
+          isNull(courierAccessCodes.usedAt),
+          isNull(courierAccessCodes.revokedAt),
+        ),
+      );
+
+    await logEvent(tx, {
+      companyId: actor.companyId,
+      eventType: "COURIER_DETACHED",
+      actorType: "USER",
+      actorId: actor.id,
+      payload: { courierId },
+    });
+
+    return { courierId, name: courier?.name ?? "" };
+  });
 }

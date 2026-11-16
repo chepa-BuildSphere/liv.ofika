@@ -249,6 +249,10 @@ export function platformAdminActor(a: { id: string }): Actor {
   return { kind: "platformAdmin", id: a.id };
 }
 
+export function courierActor(c: { id: string; companies: readonly { id: string }[] }): Actor {
+  return { kind: "courier", id: c.id, companyIds: c.companies.map((co) => co.id) };
+}
+
 // ─── API ──────────────────────────────────────────────────────────────────────
 
 export function can<A extends Action>(actor: Actor | null, action: A, resource: ActionResources[A]): Decision {

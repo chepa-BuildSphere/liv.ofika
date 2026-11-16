@@ -8,6 +8,7 @@ import { listCouriers } from "@/lib/couriers/couriers";
 import { formatPhone } from "@/lib/validation";
 import { env } from "@/env";
 import { AddCourierForm } from "./add-courier-form";
+import { DetachCourierButton } from "./detach-courier-button";
 import { IssueCodeButton } from "./issue-code-button";
 
 export const metadata: Metadata = { title: "Livreurs — Ofika Delivery" };
@@ -73,7 +74,12 @@ async function Couriers() {
                   )}
                 </div>
               </div>
-              {!c.hasPin && <IssueCodeButton courierId={c.id} appUrl={env.appUrl} />}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  {!c.hasPin && <IssueCodeButton courierId={c.id} appUrl={env.appUrl} />}
+                </div>
+                <DetachCourierButton courierId={c.id} courierName={c.name} />
+              </div>
             </li>
           ))}
         </ul>

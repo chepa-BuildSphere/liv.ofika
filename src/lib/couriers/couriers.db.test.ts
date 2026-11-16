@@ -1,16 +1,19 @@
 // Livreurs : un téléphone = un livreur, rattachable à plusieurs entreprises.
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db, pool } from "@/db";
-import { companyCouriers, couriers } from "@/db/schema";
+import { auditEvents, companyCouriers, courierAccessCodes, couriers } from "@/db/schema";
 import type { Executor } from "@/lib/audit";
 import { activateAccount } from "@/lib/auth/activation";
 import { loginCompanyUser, type CompanyUserIdentity } from "@/lib/auth/company-user";
+import { getCourierBySession, loginCourier } from "@/lib/auth/courier";
+import { can, courierActor, userActor } from "@/lib/auth/permissions";
 import { createPlatformAdmin } from "@/lib/auth/platform-admin";
 import { createCompanyWithAdmin } from "@/lib/companies/create-company";
 import { inviteUser } from "@/lib/team/team";
 import { tenantScope } from "@/lib/tenant/scope";
-import { addCourier, CourierError, listCouriers } from "./couriers";
+import { addCourier, CourierError, detachCourier, listCouriers } from "./couriers";
+import { completeFirstAccess, issueAccessCode } from "./first-access";
 
 class Rollback extends Error {}
 async function inRolledBackTx(fn: (tx: Executor) => Promise<void>) {
@@ -39,9 +42,9 @@ async function companyAdmin(tx: Executor, paId: string, name: string): Promise<C
   return r.user;
 }
 
-async function member(tx: Executor, admin: CompanyUserIdentity, roles: string[]) {
+async function member(tx: Executor, admin: CompanyUserIdentity, roles: string[], phoneNumber?: string) {
   const email = `m.${uid()}@ex.ci`;
-  const inv = await inviteUser(tx, admin, { name: "Membre", email, roles });
+  const inv = await inviteUser(tx, admin, { name: "Membre", email, roles, ...(phoneNumber ? { phone: phoneNumber } : {}) });
   await activateAccount(tx, inv.token, PASSWORD, PASSWORD);
   const r = await loginCompanyUser(tx, email, PASSWORD);
   if (!r.ok) throw new Error("login");
@@ -157,6 +160,125 @@ describe("livreurs (base réelle)", () => {
       expect((await addCourier(tx, manager, { name: "Kono", phone: phone(), employmentType: "EMPLOYEE" })).created).toBe(true);
       await expectCourierError(addCourier(tx, returns, { name: "Hervé", phone: phone(), employmentType: "EMPLOYEE" }), "FORBIDDEN");
       await expectCourierError(listCouriers(tx, returns), "FORBIDDEN");
+    });
+  });
+
+  it("détacher un livreur coupe ses accès chez cette entreprise, révoque son code en attente et garde l'autre entreprise", async () => {
+    await inRolledBackTx(async (tx) => {
+      const { a, b } = await twoCompanies(tx);
+      const key = Buffer.alloc(32, 7);
+      const pin = "482913";
+
+      // Livreur rattaché aux deux entreprises, avec code en attente puis PIN choisi
+      const num1 = phone();
+      const { courierId } = await addCourier(tx, a, { name: "Kwamé", phone: num1, employmentType: "EMPLOYEE" });
+      await addCourier(tx, b, { name: "Kwamé", phone: num1, employmentType: "INDEPENDENT" });
+      const { code } = await issueAccessCode(tx, a, courierId, key);
+      await completeFirstAccess(tx, { phone: num1, code, pin, pinConfirmation: pin }, key);
+      const session = await loginCourier(tx, num1, pin);
+      if (!session.ok) throw new Error("login courier");
+
+      // Second livreur sans PIN avec un code d'accès en attente émis par Alpha
+      const num2 = phone();
+      const pending = await addCourier(tx, a, { name: "Kono", phone: num2, employmentType: "EMPLOYEE" });
+      await issueAccessCode(tx, a, pending.courierId, key);
+
+      // Le gestionnaire d'Alpha détache Kwamé et l'admin détache Kono
+      const managerA = await member(tx, a, ["MANAGER"]);
+      await expect(detachCourier(tx, managerA, courierId)).resolves.toEqual({ courierId, name: "Kwamé" });
+      await detachCourier(tx, a, pending.courierId);
+
+      // Liste : attached=false + detachedAt renseigné
+      const listA = await listCouriers(tx, a);
+      const detached1 = listA.find((c) => c.id === courierId);
+      expect(detached1?.attached).toBe(false);
+      expect(detached1?.detachedAt).toBeInstanceOf(Date);
+
+      // Événement d'audit COURIER_DETACHED enregistré pour Alpha
+      const detachedEvents = await tx
+        .select()
+        .from(auditEvents)
+        .where(and(eq(auditEvents.companyId, a.companyId), eq(auditEvents.eventType, "COURIER_DETACHED")));
+      expect(detachedEvents).toHaveLength(2);
+
+      // Le code d'accès en attente émis par Alpha pour Kono a été révoqué
+      const [pendingCode] = await tx
+        .select()
+        .from(courierAccessCodes)
+        .where(eq(courierAccessCodes.courierId, pending.courierId));
+      expect(pendingCode.revokedAt).toBeInstanceOf(Date);
+
+      // La session de Kwamé ne contient plus Alpha, mais garde Beta ; les droits suivent immédiatement
+      const current = await getCourierBySession(tx, session.token);
+      expect(current?.companies.map((c) => c.id)).toEqual([b.companyId]);
+      expect(
+        can(courierActor(current!), "delivery.view", {
+          companyId: a.companyId,
+          status: "ASSIGNED",
+          courierId,
+        }).allowed,
+      ).toBe(false);
+      expect(
+        can(courierActor(current!), "delivery.view", {
+          companyId: b.companyId,
+          status: "ASSIGNED",
+          courierId,
+        }).allowed,
+      ).toBe(true);
+    });
+  });
+
+  it("refuse de détacher un livreur déjà détaché, d'une autre entreprise, ou par un resp. retours", async () => {
+    await inRolledBackTx(async (tx) => {
+      const { a, b } = await twoCompanies(tx);
+      const { courierId } = await addCourier(tx, b, { name: "Hervé", phone: phone(), employmentType: "EMPLOYEE" });
+      const returnsA = await member(tx, a, ["RETURNS_OFFICER"]);
+
+      await expectCourierError(detachCourier(tx, returnsA, courierId), "FORBIDDEN");
+      await expectCourierError(detachCourier(tx, a, courierId), "NOT_FOUND");
+      await expectCourierError(detachCourier(tx, a, "pas-un-uuid"), "NOT_FOUND");
+
+      await detachCourier(tx, b, courierId);
+      await expectCourierError(detachCourier(tx, b, courierId), "NOT_FOUND");
+    });
+  });
+
+  it("règle 6 : un utilisateur d'entreprise qui a aussi un compte livreur reçoit son courierId à la connexion", async () => {
+    await inRolledBackTx(async (tx) => {
+      const { a } = await twoCompanies(tx);
+      const sharedPhone = phone();
+      const { courierId } = await addCourier(tx, a, { name: "Yao", phone: sharedPhone, employmentType: "EMPLOYEE" });
+
+      // Utilisateur avec le même numéro (écrit avec espaces) + rôles cumulatifs admin + resp. retours
+      const spaced = `+225 ${sharedPhone.replace(/(\d{2})(?=\d)/g, "$1 ")}`;
+      const dualUser = await member(tx, a, ["COMPANY_ADMIN", "RETURNS_OFFICER"], spaced);
+      expect(dualUser.courierId).toBe(courierId);
+
+      // Règle 6 : interdit de forcer Livré ou réceptionner un retour sur ses propres colis
+      expect(
+        can(userActor(dualUser), "delivery.forceDelivered", {
+          companyId: a.companyId,
+          status: "ARRIVED",
+          courierId,
+        }).allowed,
+      ).toBe(false);
+      expect(
+        can(userActor(dualUser), "return.receive", {
+          companyId: a.companyId,
+          status: "RETURNING",
+          courierId,
+          returnDeclaredByCourierId: courierId,
+        }).allowed,
+      ).toBe(false);
+
+      // Sur le colis d'un autre livreur, les mêmes actions sont autorisées
+      expect(
+        can(userActor(dualUser), "delivery.forceDelivered", {
+          companyId: a.companyId,
+          status: "ARRIVED",
+          courierId: uid(),
+        }).allowed,
+      ).toBe(true);
     });
   });
 });

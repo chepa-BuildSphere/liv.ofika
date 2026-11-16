@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 import { db } from "@/db";
 import { env } from "@/env";
 import { requireUser } from "@/lib/auth/user-session";
-import { addCourier, CourierError } from "@/lib/couriers/couriers";
+import { addCourier, CourierError, detachCourier } from "@/lib/couriers/couriers";
 import { FirstAccessError, issueAccessCode } from "@/lib/couriers/first-access";
 
 type Fields = Partial<Record<"name" | "phone" | "employmentType", string>>;
@@ -58,4 +58,18 @@ export async function issueCodeAction(_prev: IssueCodeState, formData: FormData)
 
 function toView(i: { code: string; expiresAt: Date; courierName: string; phone: string }): AccessCodeView {
   return { code: i.code, expiresAt: i.expiresAt.toISOString(), courierName: i.courierName, phone: i.phone };
+}
+
+export type DetachCourierState = { status: "idle" } | { status: "error"; message: string } | { status: "done" };
+
+export async function detachCourierAction(_prev: DetachCourierState, formData: FormData): Promise<DetachCourierState> {
+  const actor = await requireUser();
+  try {
+    await detachCourier(db, actor, String(formData.get("courierId") ?? ""));
+    refresh();
+    return { status: "done" };
+  } catch (e) {
+    if (e instanceof CourierError) return { status: "error", message: e.message };
+    throw e;
+  }
 }

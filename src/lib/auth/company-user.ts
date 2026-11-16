@@ -1,7 +1,8 @@
 import { eq } from "drizzle-orm";
-import { companies, userRoles, users } from "@/db/schema";
+import { companies, couriers, userRoles, users } from "@/db/schema";
 import { logEvent, type Executor } from "@/lib/audit";
 import { hashSecret, verifySecret } from "@/lib/security";
+import { normalizePhone } from "@/lib/validation";
 import { isLocked, recordFailure, recordSuccess } from "./login-throttle";
 import { normalizeEmail } from "./platform-admin";
 import { createSession, findValidSession, revokeSession, type SessionMeta } from "./sessions";
@@ -21,6 +22,8 @@ export type CompanyUserIdentity = {
   companyId: string;
   companyName: string;
   roles: UserRole[];
+  /** Compte livreur rattaché au même numéro de téléphone, s'il existe (règle 6). */
+  courierId?: string | null;
 };
 
 export type UserLoginResult =
@@ -39,6 +42,7 @@ async function loadIdentity(db: Executor, userId: string) {
       id: users.id,
       name: users.name,
       email: users.email,
+      phone: users.phone,
       passwordHash: users.passwordHash,
       isActive: users.isActive,
       activatedAt: users.activatedAt,
@@ -54,7 +58,12 @@ async function loadIdentity(db: Executor, userId: string) {
   const roles = (await db.select({ role: userRoles.role }).from(userRoles).where(eq(userRoles.userId, userId))).map(
     (r) => r.role,
   );
-  return { ...row, roles };
+  // Règle 6 : si l'utilisateur a aussi un compte livreur (même téléphone), le lier
+  const normalizedPhone = row.phone ? normalizePhone(row.phone) : null;
+  const [courier] = normalizedPhone
+    ? await db.select({ id: couriers.id }).from(couriers).where(eq(couriers.phone, normalizedPhone)).limit(1)
+    : [];
+  return { ...row, roles, courierId: courier?.id ?? null };
 }
 
 function toIdentity(row: NonNullable<Awaited<ReturnType<typeof loadIdentity>>>): CompanyUserIdentity {
@@ -65,6 +74,7 @@ function toIdentity(row: NonNullable<Awaited<ReturnType<typeof loadIdentity>>>):
     companyId: row.companyId,
     companyName: row.companyName,
     roles: row.roles,
+    courierId: row.courierId,
   };
 }
 
