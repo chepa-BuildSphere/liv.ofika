@@ -10,13 +10,17 @@
 | **Phase 0 — Fondations** | ✅ Terminée (0.1 → 0.7) |
 | **Phase 1 — Comptes et droits** | ✅ Terminée (1.1 → 1.7) |
 | **Phase 2 — Livreurs** | ✅ Terminée (2.1 → 2.5) |
-| Phase 3 — Livraisons (côté entreprise) | 🔄 En cours : 3.1 faite → prochaine **tâche 3.2** (import CSV/Excel avec rapport d'erreurs ligne par ligne) |
+| Phase 3 — Livraisons (côté entreprise) | 🔄 En cours : 3.1 → 3.2 faites → prochaine **tâche 3.3** (liste + filtres par statut, livreur, date) |
 
 ### Détail de la phase 3
 
 | # | Tâche | Preuve |
 |---|---|---|
 | 3.1 | Créer une livraison à la main (`/espace/livraisons`) | 4 tests base (création `CREATED` par admin et gestionnaire + événement `DELIVERY_CREATED` et chaîne d'audit valide, doublon de référence refusé dans l'entreprise et autorisé ailleurs, cloisonnement `listDeliveries`, refus `RETURNS_OFFICER`) + 5 tests unitaires de validation |
+
+| 3.2 | Import CSV/Excel avec rapport d'erreurs ligne par ligne (`/espace/livraisons`) | 6 tests base (100 lignes valides importées `CREATED` + 4 lignes fausses signalées avec n° de ligne exact + 101 événements audit chaînés, cloisonnement et refus `RETURNS_OFFICER`) + 4 tests unitaires (`;`, `,`, `\t`, BOM, guillemets, colonnes manquantes, montants formatés, doublons internes) |
+
+**Import CSV/Excel (3.2)** : `src/lib/deliveries/csv-import.ts` + `import-deliveries-form.tsx`. Supporte fichiers CSV (`;`, `,`) et copier-coller direct depuis Excel (`\t`), BOM UTF-8, guillemets RFC 4180, en-têtes FR/EN tolérants aux accents et modèle CSV téléchargeable. Insertion par lot via `tenantScope.insertMany` (`src/lib/tenant/scope.ts`) et chaînage d'audit groupé `logEvents` (`src/lib/audit/index.ts`), avec rapport d'erreurs ligne par ligne (champs invalides, doublons internes ou déjà présents en base).
 
 **Création manuelle (3.1)** : `src/lib/deliveries/deliveries.ts` (`createDelivery`, `listDeliveries`, `validateDeliveryInput`) et `/espace/livraisons`. Réservée à l'admin entreprise et au gestionnaire (`delivery.create`). Normalise le téléphone destinataire (`normalizePhone`), impose un montant entier positif/nul en F CFA, refuse `QR_OTP` tant que l'option est en maintenance dans le MVP, vérifie l'unicité de `reference` dans l'entreprise (hors mode test) et journalise `DELIVERY_CREATED` dans la même transaction.
 

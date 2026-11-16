@@ -78,6 +78,18 @@ export function tenantScope(db: Executor, companyId: string) {
       return (await db.insert(table as any).values(row).returning()) as T["$inferSelect"][];
     },
 
+    /** Insère plusieurs lignes pour l'entreprise : company_id est imposé sur chacune. */
+    async insertMany<T extends TenantTable>(
+      table: T,
+      values: Omit<T["$inferInsert"], "companyId">[],
+    ): Promise<T["$inferSelect"][]> {
+      if (values.length === 0) return [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rows = values.map((v) => ({ ...(v as any), companyId }));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (await db.insert(table as any).values(rows).returning()) as T["$inferSelect"][];
+    },
+
     /** Met à jour les lignes de l'entreprise ; company_id ne change jamais. */
     async update<T extends TenantTable>(
       table: T,

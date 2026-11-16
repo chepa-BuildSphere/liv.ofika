@@ -33,11 +33,11 @@ export type AuditEventInput = Pick<AuditInsert, "eventType" | "actorType"> &
 const AUDIT_LOCK_KEY = 0x0f1a_a0d1;
 
 /**
- * Ajoute un événement au journal, chaîné au précédent.
- * À appeler avec la transaction qui fait le changement métier : si elle est
- * annulée, l'événement l'est aussi (pas d'événement fantôme).
+ * Ajoute un lot d'événements au journal, chaînés les uns aux autres à la suite
+ * du dernier maillon en base (un seul verrou et un seul INSERT SQL).
  */
-export async function logEvent(executor: Executor, input: AuditEventInput) {
+export async function logEvents(executor: Executor, inputs: AuditEventInput[]) {
+  if (inputs.length === 0) return [];
   return executor.transaction(async (tx) => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(${AUDIT_LOCK_KEY})`);
 
@@ -46,38 +46,51 @@ export async function logEvent(executor: Executor, input: AuditEventInput) {
       .from(auditEvents)
       .orderBy(desc(auditEvents.id))
       .limit(1);
-    const prevHash = last?.hash ?? null;
+    let prevHash = last?.hash ?? null;
+    const serverTime = new Date();
 
-    const content: AuditContent = {
-      companyId: input.companyId ?? null,
-      deliveryId: input.deliveryId ?? null,
-      eventType: input.eventType,
-      actorType: input.actorType,
-      actorId: input.actorId ?? null,
-      fromStatus: input.fromStatus ?? null,
-      toStatus: input.toStatus ?? null,
-      payload: input.payload ?? null,
-      lat: input.lat ?? null,
-      lng: input.lng ?? null,
-      accuracy: input.accuracy ?? null,
-      ip: input.ip ?? null,
-      userAgent: input.userAgent ?? null,
-      serverTime: new Date(),
-    };
-
-    const [row] = await tx
-      .insert(auditEvents)
-      .values({
+    const values = inputs.map((input) => {
+      const content: AuditContent = {
+        companyId: input.companyId ?? null,
+        deliveryId: input.deliveryId ?? null,
+        eventType: input.eventType,
+        actorType: input.actorType,
+        actorId: input.actorId ?? null,
+        fromStatus: input.fromStatus ?? null,
+        toStatus: input.toStatus ?? null,
+        payload: input.payload ?? null,
+        lat: input.lat ?? null,
+        lng: input.lng ?? null,
+        accuracy: input.accuracy ?? null,
+        ip: input.ip ?? null,
+        userAgent: input.userAgent ?? null,
+        serverTime,
+      };
+      const hash = computeAuditHash(prevHash, content);
+      const row = {
         ...content,
         actorType: input.actorType,
         fromStatus: input.fromStatus ?? null,
         toStatus: input.toStatus ?? null,
         prevHash,
-        hash: computeAuditHash(prevHash, content),
-      })
-      .returning();
-    return row;
+        hash,
+      };
+      prevHash = hash;
+      return row;
+    });
+
+    return tx.insert(auditEvents).values(values).returning();
   });
+}
+
+/**
+ * Ajoute un événement au journal, chaîné au précédent.
+ * À appeler avec la transaction qui fait le changement métier : si elle est
+ * annulée, l'événement l'est aussi (pas d'événement fantôme).
+ */
+export async function logEvent(executor: Executor, input: AuditEventInput) {
+  const [row] = await logEvents(executor, [input]);
+  return row;
 }
 
 export type ChainCheck =

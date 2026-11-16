@@ -5,9 +5,11 @@ import { db } from "@/db";
 import { can, userActor } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/user-session";
 import { listDeliveries } from "@/lib/deliveries/deliveries";
+import { CSV_TEMPLATE } from "@/lib/deliveries/csv-import";
 import type { DeliveryStatus } from "@/lib/deliveries/transitions";
 import { formatPhone } from "@/lib/validation";
 import { CreateDeliveryForm } from "./create-delivery-form";
+import { ImportDeliveriesForm } from "./import-deliveries-form";
 
 export const metadata: Metadata = { title: "Livraisons — Ofika Delivery" };
 
@@ -54,8 +56,9 @@ async function Deliveries() {
       <p className="mt-2 text-sm text-ink-muted">
         Créez vos livraisons à la main avant de les affecter à un livreur.
       </p>
-      <div className="mt-6">
+      <div className="mt-6 flex flex-wrap items-start gap-3">
         <CreateDeliveryForm />
+        <ImportDeliveriesForm template={CSV_TEMPLATE} />
       </div>
 
       {list.length === 0 ? (

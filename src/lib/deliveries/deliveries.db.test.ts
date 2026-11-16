@@ -9,6 +9,7 @@ import { loginCompanyUser, type CompanyUserIdentity } from "@/lib/auth/company-u
 import { createPlatformAdmin } from "@/lib/auth/platform-admin";
 import { createCompanyWithAdmin } from "@/lib/companies/create-company";
 import { inviteUser } from "@/lib/team/team";
+import { importDeliveriesFromCsv } from "./csv-import";
 import { createDelivery, DeliveryError, listDeliveries } from "./deliveries";
 
 class Rollback extends Error {}
@@ -174,6 +175,80 @@ describe("livraisons manuelles (base réelle)", () => {
         "FORBIDDEN",
       );
       await expectDeliveryError(listDeliveries(tx, returnsOfficer), "FORBIDDEN");
+    });
+  });
+
+  it("import CSV : 100 lignes valides importées + 4 lignes fausses signalées ligne par ligne", async () => {
+    await inRolledBackTx(async (tx) => {
+      const { a } = await twoCompanies(tx);
+      const manager = await member(tx, a, ["MANAGER"]);
+
+      // Une référence déjà existante en base avant l'import
+      await createDelivery(tx, a, {
+        reference: "CMD-DEJA",
+        recipientName: "Déjà Là",
+        recipientPhone: "0700000000",
+        address: "Plateau",
+      });
+
+      const lines = ["reference;destinataire;telephone;adresse;quartier;montant"];
+      for (let i = 1; i <= 100; i++) {
+        const suffix = String(i).padStart(4, "0");
+        lines.push(`CMD-IMP-${suffix};Client ${i};07 00 00 ${suffix.slice(0, 2)} ${suffix.slice(2)};Rue ${i};Cocody;${i * 100}`);
+      }
+      // 4 lignes en erreur (lignes 102, 103, 104, 105 du fichier)
+      lines.push("CMD-ERR-TEL;Client Faux Tel;123;Cocody;Cocody;1000"); // ligne 102 : téléphone invalide
+      lines.push("CMD-ERR-ADR;Client Sans Adr;0701020304;;Cocody;1000"); // ligne 103 : adresse manquante
+      lines.push("CMD-IMP-0001;Doublon Fichier;0701020305;Yopougon;Yopougon;1000"); // ligne 104 : doublon interne (ligne 2)
+      lines.push("CMD-DEJA;Doublon Base;0701020306;Treichville;Treichville;1000"); // ligne 105 : déjà en base
+
+      const res = await importDeliveriesFromCsv(tx, manager, lines.join("\n"), { ip: "203.0.113.15", userAgent: "vitest" });
+      expect(res.ok).toBe(true);
+      if (!res.ok) return;
+
+      expect(res.totalRows).toBe(104);
+      expect(res.importedCount).toBe(100);
+      expect(res.imported.every((d) => d.status === "CREATED" && d.companyId === a.companyId && !d.isTest)).toBe(true);
+
+      expect(res.errors).toHaveLength(4);
+      expect(res.errors.map((e) => ({ line: e.lineNumber, ref: e.reference }))).toEqual([
+        { line: 102, ref: "CMD-ERR-TEL" },
+        { line: 103, ref: "CMD-ERR-ADR" },
+        { line: 104, ref: "CMD-IMP-0001" },
+        { line: 105, ref: "CMD-DEJA" },
+      ]);
+      expect(res.errors[2].message).toContain("ligne 2");
+
+      // Liste : 100 importées + 1 préexistante = 101
+      const all = await listDeliveries(tx, a);
+      expect(all).toHaveLength(101);
+
+      // Chaîne d'audit intègre sur les 101 événements DELIVERY_CREATED
+      expect((await verifyAuditChain(tx)).ok).toBe(true);
+    });
+  });
+
+  it("import CSV : cloisonnement entre entreprises et refus pour resp. retours", async () => {
+    await inRolledBackTx(async (tx) => {
+      const { a, b } = await twoCompanies(tx);
+      const returnsOfficer = await member(tx, a, ["RETURNS_OFFICER"]);
+
+      await createDelivery(tx, b, {
+        reference: "CMD-SHARED-REF",
+        recipientName: "Client B",
+        recipientPhone: "0709090909",
+        address: "Treichville",
+      });
+
+      const csv = "reference;destinataire;telephone;adresse\nCMD-SHARED-REF;Client A;0708080808;Cocody\n";
+      const resA = await importDeliveriesFromCsv(tx, a, csv);
+      expect(resA.ok).toBe(true);
+      if (resA.ok) {
+        expect(resA.importedCount).toBe(1);
+        expect(resA.errors).toEqual([]);
+      }
+
+      await expectDeliveryError(importDeliveriesFromCsv(tx, returnsOfficer, csv), "FORBIDDEN");
     });
   });
 });

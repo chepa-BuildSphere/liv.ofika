@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { parseCsvRows, prepareCsvImport } from "./csv-import";
 import { validateDeliveryInput } from "./deliveries";
 
 describe("validateDeliveryInput", () => {
@@ -95,5 +96,79 @@ describe("validateDeliveryInput", () => {
     if (!r.ok) {
       expect(Object.keys(r.fields).sort()).toEqual(["address", "recipientName", "recipientPhone", "reference"]);
     }
+  });
+});
+
+describe("parseCsvRows / prepareCsvImport", () => {
+  it("supporte ; (Excel FR), , (CSV), \\t (copier-coller Excel), BOM UTF-8 et guillemets", () => {
+    const semi =
+      "\uFEFFRéférence;Destinataire;Téléphone;Adresse;Quartier;Montant\r\n" +
+      'CMD-1;"Awa ""La Grande"" Koné";07 07 07 07 07;"Rue 12, Cocody";Cocody;15 000 F CFA\r\n';
+    const rSemi = prepareCsvImport(semi);
+    expect(rSemi.ok).toBe(true);
+    if (rSemi.ok) {
+      expect(rSemi.errors).toEqual([]);
+      expect(rSemi.candidates[0].lineNumber).toBe(2);
+      expect(rSemi.candidates[0].data).toMatchObject({
+        reference: "CMD-1",
+        recipientName: 'Awa "La Grande" Koné',
+        recipientPhone: "+2250707070707",
+        address: "Rue 12, Cocody",
+        amountToCollect: 15000,
+      });
+    }
+
+    const comma =
+      'reference,destinataire,telephone,adresse\n' +
+      'CMD-2,Yao,"+225 05 05 05 05 05","Marcory, Zone 4"\n';
+    expect(parseCsvRows(comma).delimiter).toBe(",");
+    const rComma = prepareCsvImport(comma);
+    expect(rComma.ok && rComma.candidates).toHaveLength(1);
+
+    const tsv =
+      "reference\tdestinataire\ttelephone\tadresse\n" +
+      "CMD-3\tKono\t0102030405\tPlateau\n";
+    expect(parseCsvRows(tsv).delimiter).toBe("\t");
+    const rTsv = prepareCsvImport(tsv);
+    expect(rTsv.ok && rTsv.candidates).toHaveLength(1);
+  });
+
+  it("signale les colonnes obligatoires manquantes", () => {
+    const r = prepareCsvImport("reference;destinataire;quartier\nCMD-1;Awa;Cocody\n");
+    expect(r).toMatchObject({
+      ok: false,
+      code: "MISSING_COLUMNS",
+      missingColumns: ["telephone", "adresse"],
+    });
+  });
+
+  it("nettoie les montants formatés et refuse les décimales", () => {
+    const csv =
+      "Référence;Nom;Téléphone;Adresse;Montant\n" +
+      "CMD-1;Awa;0707070707;Cocody;15\u00a0000 FCFA\n" +
+      "CMD-2;Yao;0505050505;Marcory;1500,50\n";
+    const r = prepareCsvImport(csv);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.candidates).toHaveLength(1);
+    expect(r.candidates[0].data.amountToCollect).toBe(15000);
+    expect(r.errors).toHaveLength(1);
+    expect(r.errors[0]).toMatchObject({ lineNumber: 3, reference: "CMD-2" });
+  });
+
+  it("détecte un doublon de référence dans le même fichier avec le numéro des deux lignes", () => {
+    const csv =
+      "reference;destinataire;telephone;adresse\n" +
+      "CMD-10;Awa;0707070707;Cocody\n" +
+      "CMD-11;Yao;0505050505;Marcory\n" +
+      "CMD-10;Kono;0102030405;Plateau\n";
+    const r = prepareCsvImport(csv);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.candidates.map((c) => c.data.reference)).toEqual(["CMD-10", "CMD-11"]);
+    expect(r.errors).toHaveLength(1);
+    expect(r.errors[0].lineNumber).toBe(4);
+    expect(r.errors[0].reference).toBe("CMD-10");
+    expect(r.errors[0].message).toContain("ligne 2");
   });
 });
