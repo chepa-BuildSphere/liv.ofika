@@ -11,7 +11,7 @@ export type CourierLoginState = { error?: string; phone?: string };
 export async function courierLoginAction(_prev: CourierLoginState, formData: FormData): Promise<CourierLoginState> {
   const phone = String(formData.get("phone") ?? "");
   const pin = String(formData.get("pin") ?? "");
-  const result = await loginCourier(db, phone, pin, await getRequestMeta());
+  const result = await loginCourier(db, phone, pin, await getRequestMeta(formData.get("deviceSignals")));
 
   if (!result.ok) {
     if (result.error === "LOCKED") {

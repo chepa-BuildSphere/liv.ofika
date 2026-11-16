@@ -1,13 +1,20 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
+import { collectBrowserDeviceSignals } from "@/lib/device-signals-client";
 import { courierLoginAction, type CourierLoginState } from "./actions";
 
 export function CourierLoginForm() {
   const [state, action, pending] = useActionState<CourierLoginState, FormData>(courierLoginAction, {});
+  const [deviceSignals, setDeviceSignals] = useState("");
+
+  useEffect(() => {
+    setDeviceSignals(collectBrowserDeviceSignals());
+  }, []);
 
   return (
     <form action={action} className="flex flex-col gap-5">
+      <input type="hidden" name="deviceSignals" value={deviceSignals} />
       <label className="field-label">
         Numéro de téléphone
         <input

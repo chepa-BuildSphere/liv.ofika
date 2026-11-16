@@ -1,6 +1,6 @@
 # Avancement du projet
 
-> Mis à jour le 15/11/2026. À relire en début de session.
+> Mis à jour le 16/11/2026. À relire en début de session.
 > Le découpage des tâches est dans `taches-mvp.md`.
 
 ## Où on en est
@@ -9,7 +9,7 @@
 |---|---|
 | **Phase 0 — Fondations** | ✅ Terminée (0.1 → 0.7) |
 | **Phase 1 — Comptes et droits** | ✅ Terminée (1.1 → 1.7) |
-| Phase 2 — Livreurs | 🔄 En cours : 2.1 → 2.3 faites → prochaine **tâche 2.4** (empreinte de l'appareil du livreur à la connexion) |
+| Phase 2 — Livreurs | 🔄 En cours : 2.1 → 2.4 faites → prochaine **tâche 2.5** (détacher un livreur) |
 
 ### Détail de la phase 2
 
@@ -20,6 +20,10 @@
 | 2.2 | Premier accès : code d'accès (option B) + PIN 6 chiffres | 7 tests base (PIN haché scrypt, code à usage unique, 5 faux = code annulé, expiré, remplacé, PIN facile refusé sans consommer le code, autre entreprise / resp. retours refusés) + 12 tests du PIN + navigateur mobile |
 
 | 2.3 | Connexion livreur `/livreur/connexion` → `/livreur` | 7 tests base (connexion, 5 PIN faux = bloqué 15 min en base, compteur remis à zéro, numéro inconnu / sans PIN / désactivé = même message, déconnexion, entreprise détachée ou suspendue retirée, sessions cloisonnées) + navigateur mobile |
+
+| 2.4 | Empreinte de l'appareil du livreur à la connexion | 8 tests base (empreinte enregistrée dans `sessions.device_fingerprint` et dans l'audit `COURIER_LOGIN`, renvoyée par la session, distincte d'un appareil à l'autre) + 6 tests unitaires (SHA-256 déterministe, portrait = paysage, langue normalisée, parsing défensif) |
+
+**Empreinte d'appareil (2.4)** : `src/lib/security/device-fingerprint.ts` + `src/lib/device-signals-client.ts`. À la connexion (`/livreur/connexion`), le navigateur envoie les signaux de l'appareil (User-Agent, plateforme, écran normalisé portrait/paysage, langue, fuseau horaire, cœurs, points tactiles), complétés par les en-têtes HTTP (`User-Agent`, `Sec-CH-UA-*`, `Accept-Language`). Le serveur calcule une empreinte SHA-256 déterministe et l'enregistre dans `sessions.device_fingerprint` et dans l'événement d'audit `COURIER_LOGIN`. Exposée sur `CourierIdentity.deviceFingerprint` pour la génération et le contrôle du QR en phase 4.
 
 **Connexion livreur (2.3)** : `src/lib/auth/courier.ts`. Téléphone (toute écriture) + PIN. Blocage stocké en base (`pin_failed_attempts`, `pin_locked_until`) : survit au redémarrage. Session 14 jours, cookie `ofika_livreur`. L'accueil `/livreur` liste les entreprises où il est rattaché et actif (colis en phase 3). Point mineur noté : le message « compte bloqué » n'apparaît que pour un numéro existant (permet de deviner qu'un numéro est livreur après 5 essais).
 

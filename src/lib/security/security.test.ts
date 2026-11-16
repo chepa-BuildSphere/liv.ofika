@@ -2,12 +2,14 @@ import { randomBytes } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   apiKeyEnvironment,
+  computeDeviceFingerprint,
   decryptSecret,
   encryptSecret,
   generateApiKey,
   hashCode,
   hashSecret,
   hashToken,
+  parseClientDeviceSignals,
   randomDigits,
   randomToken,
   safeEqualHex,
@@ -160,5 +162,75 @@ describe("generateApiKey", () => {
   it("reconnaît une clé test et refuse un autre format", () => {
     expect(apiKeyEnvironment(generateApiKey("TEST").key)).toBe("TEST");
     expect(apiKeyEnvironment("sk_live_xxx")).toBeNull();
+  });
+});
+
+describe("computeDeviceFingerprint / parseClientDeviceSignals (empreinte d'appareil)", () => {
+  const baseSignals = {
+    userAgent: "Mozilla/5.0 (Linux; Android 13; Tecno Spark 10) Chrome/120.0",
+    platform: "Linux armv81",
+    model: "Tecno Spark 10",
+    screen: "360x800@2:24",
+    language: "fr-FR",
+    timeZone: "Africa/Abidjan",
+    hardwareConcurrency: 8,
+    maxTouchPoints: 5,
+  };
+
+  it("produit une empreinte SHA-256 déterministe de 64 caractères hex", () => {
+    const fp1 = computeDeviceFingerprint(baseSignals);
+    const fp2 = computeDeviceFingerprint({ ...baseSignals });
+    expect(fp1).toMatch(/^[0-9a-f]{64}$/);
+    expect(fp1).toBe(fp2);
+  });
+
+  it("est invariante entre orientation portrait et paysage", () => {
+    const portrait = computeDeviceFingerprint({ ...baseSignals, screen: "360x800@2:24" });
+    const landscape = computeDeviceFingerprint({ ...baseSignals, screen: "800x360@2:24" });
+    expect(portrait).toBe(landscape);
+  });
+
+  it("normalise la langue entre navigateur et en-tête Accept-Language", () => {
+    const fromNav = computeDeviceFingerprint({ ...baseSignals, language: "fr-FR" });
+    const fromHeader = computeDeviceFingerprint({ ...baseSignals, language: "fr-FR,fr;q=0.9,en;q=0.8" });
+    expect(fromNav).toBe(fromHeader);
+  });
+
+  it("distingue deux appareils différents", () => {
+    const phoneA = computeDeviceFingerprint(baseSignals);
+    const phoneB = computeDeviceFingerprint({
+      ...baseSignals,
+      model: "Samsung Galaxy A14",
+      screen: "412x915@2.625:24",
+    });
+    expect(phoneA).not.toBe(phoneB);
+  });
+
+  it("retourne null quand aucun signal significatif d'appareil n'est fourni", () => {
+    expect(computeDeviceFingerprint({})).toBeNull();
+    expect(computeDeviceFingerprint({ language: "fr-FR", timeZone: "Africa/Abidjan" })).toBeNull();
+  });
+
+  it("résiste aux entrées invalides dans parseClientDeviceSignals", () => {
+    expect(parseClientDeviceSignals(null)).toEqual({});
+    expect(parseClientDeviceSignals("")).toEqual({});
+    expect(parseClientDeviceSignals("pas-du-json")).toEqual({});
+    expect(parseClientDeviceSignals("[1,2,3]")).toEqual({});
+    expect(parseClientDeviceSignals("x".repeat(5000))).toEqual({});
+
+    const parsed = parseClientDeviceSignals(
+      JSON.stringify({
+        userAgent: "  Chrome Android  ",
+        screen: "360x800@2:24",
+        hardwareConcurrency: 8,
+        maxTouchPoints: 9999,
+        extra: "ignoré",
+      }),
+    );
+    expect(parsed).toEqual({
+      userAgent: "Chrome Android",
+      screen: "360x800@2:24",
+      hardwareConcurrency: 8,
+    });
   });
 });

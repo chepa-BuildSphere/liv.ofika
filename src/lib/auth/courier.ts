@@ -1,7 +1,7 @@
 import { and, asc, eq } from "drizzle-orm";
 import { companies, companyCouriers, couriers } from "@/db/schema";
 import { logEvent, type Executor } from "@/lib/audit";
-import { hashSecret, verifySecret } from "@/lib/security";
+import { computeDeviceFingerprint, hashSecret, verifySecret } from "@/lib/security";
 import { normalizePhone } from "@/lib/validation";
 import { createSession, findValidSession, revokeSession, type SessionMeta } from "./sessions";
 
@@ -17,6 +17,8 @@ export type CourierIdentity = {
   id: string;
   name: string;
   phone: string;
+  /** Empreinte de l'appareil enregistrée à la connexion (tâche 2.4). */
+  deviceFingerprint: string | null;
   /** Entreprises où il est rattaché et actif (sa PWA regroupe les colis par entreprise). */
   companies: { id: string; name: string }[];
 };
@@ -79,12 +81,16 @@ export async function loginCourier(db: Executor, phoneInput: string, pin: string
     }
 
     await tx.update(couriers).set({ pinFailedAttempts: 0, pinLockedUntil: null }).where(eq(couriers.id, courier.id));
-    const session = await createSession(tx, { kind: "courier", id: courier.id }, COURIER_SESSION_TTL_MS, meta);
+    const deviceFingerprint = meta.deviceFingerprint?.trim() || computeDeviceFingerprint({ userAgent: meta.userAgent });
+    const session = await createSession(tx, { kind: "courier", id: courier.id }, COURIER_SESSION_TTL_MS, {
+      ...meta,
+      deviceFingerprint,
+    });
     await logEvent(tx, {
       eventType: "COURIER_LOGIN",
       actorType: "COURIER",
       actorId: courier.id,
-      payload: { sessionId: session.sessionId },
+      payload: { sessionId: session.sessionId, deviceFingerprint },
       ip: meta.ip,
       userAgent: meta.userAgent,
     });
@@ -92,7 +98,13 @@ export async function loginCourier(db: Executor, phoneInput: string, pin: string
       ok: true,
       token: session.token,
       expiresAt: session.expiresAt,
-      courier: { id: courier.id, name: courier.name, phone: courier.phone, companies: await activeCompanies(tx, courier.id) },
+      courier: {
+        id: courier.id,
+        name: courier.name,
+        phone: courier.phone,
+        deviceFingerprint,
+        companies: await activeCompanies(tx, courier.id),
+      },
     };
   });
 }
@@ -103,7 +115,13 @@ export async function getCourierBySession(db: Executor, token: string | undefine
   if (!session?.courierId) return null;
   const [courier] = await db.select().from(couriers).where(eq(couriers.id, session.courierId)).limit(1);
   if (!courier?.isActive || !courier.pinHash) return null;
-  return { id: courier.id, name: courier.name, phone: courier.phone, companies: await activeCompanies(db, courier.id) };
+  return {
+    id: courier.id,
+    name: courier.name,
+    phone: courier.phone,
+    deviceFingerprint: session.deviceFingerprint,
+    companies: await activeCompanies(db, courier.id),
+  };
 }
 
 export async function logoutCourier(db: Executor, token: string | undefined | null, meta: SessionMeta = {}) {

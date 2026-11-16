@@ -1,12 +1,13 @@
 // Connexion livreur : téléphone + PIN, blocage en base après 5 PIN faux.
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { db, pool } from "@/db";
-import { companies, companyCouriers, couriers } from "@/db/schema";
+import { auditEvents, companies, companyCouriers, couriers, sessions } from "@/db/schema";
 import type { Executor } from "@/lib/audit";
 import { addCourier } from "@/lib/couriers/couriers";
 import { completeFirstAccess, issueAccessCode } from "@/lib/couriers/first-access";
 import { createCompanyWithAdmin } from "@/lib/companies/create-company";
+import { computeDeviceFingerprint, hashToken } from "@/lib/security";
 import { tenantScope } from "@/lib/tenant/scope";
 import { activateAccount } from "./activation";
 import { loginCompanyUser, getCompanyUserBySession } from "./company-user";
@@ -161,6 +162,67 @@ describe("connexion livreur (base réelle)", () => {
       const admin = await loginPlatformAdmin(tx, pa.email, "mot-de-passe-plateforme");
       if (!admin.ok) throw new Error("login admin");
       expect(await getCourierBySession(tx, admin.token)).toBeNull();
+    });
+  });
+
+  it("enregistre l'empreinte de l'appareil en base et dans l'audit à la connexion", async () => {
+    await inRolledBackTx(async (tx) => {
+      const { num, courierId } = await courierWithPin(tx);
+      const signalsA = {
+        userAgent: "Mozilla/5.0 (Linux; Android 13; Tecno Spark 10) Chrome/120.0",
+        platform: "Linux armv81",
+        model: "Tecno Spark 10",
+        screen: "360x800@2:24",
+        language: "fr-FR",
+        timeZone: "Africa/Abidjan",
+        hardwareConcurrency: 8,
+        maxTouchPoints: 5,
+      };
+      const expectedFpA = computeDeviceFingerprint(signalsA);
+      expect(expectedFpA).toMatch(/^[0-9a-f]{64}$/);
+
+      // Connexion depuis l'appareil A avec signaux complets
+      const loginA = await loginCourier(tx, num, PIN, {
+        ...meta,
+        userAgent: signalsA.userAgent,
+        deviceFingerprint: expectedFpA,
+      });
+      expect(loginA.ok).toBe(true);
+      if (!loginA.ok) return;
+
+      expect(loginA.courier.deviceFingerprint).toBe(expectedFpA);
+
+      // Vérifiable directement dans `sessions.device_fingerprint` en base
+      const [sessA] = await tx.select().from(sessions).where(eq(sessions.tokenHash, hashToken(loginA.token)));
+      expect(sessA.deviceFingerprint).toBe(expectedFpA);
+
+      // Renvoyé par getCourierBySession
+      expect(await getCourierBySession(tx, loginA.token)).toMatchObject({
+        id: courierId,
+        deviceFingerprint: expectedFpA,
+      });
+
+      // Présent dans le payload de l'événement COURIER_LOGIN
+      const [auditLogin] = await tx
+        .select()
+        .from(auditEvents)
+        .where(and(eq(auditEvents.actorId, courierId), eq(auditEvents.eventType, "COURIER_LOGIN")));
+      expect(auditLogin.payload).toMatchObject({
+        sessionId: sessA.id,
+        deviceFingerprint: expectedFpA,
+      });
+
+      // Deuxième connexion depuis un appareil B différent (ou repli userAgent seul) -> empreinte distincte
+      const loginB = await loginCourier(tx, num, PIN, {
+        ip: "203.0.113.31",
+        userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0) Safari/605.1",
+      });
+      expect(loginB.ok).toBe(true);
+      if (!loginB.ok) return;
+
+      const [sessB] = await tx.select().from(sessions).where(eq(sessions.tokenHash, hashToken(loginB.token)));
+      expect(sessB.deviceFingerprint).toMatch(/^[0-9a-f]{64}$/);
+      expect(sessB.deviceFingerprint).not.toBe(expectedFpA);
     });
   });
 });
