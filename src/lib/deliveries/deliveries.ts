@@ -1,10 +1,11 @@
-import { desc, eq } from "drizzle-orm";
-import { deliveries } from "@/db/schema";
+import { desc, eq, gte, ilike, isNull, lt, type SQL } from "drizzle-orm";
+import { couriers, deliveries } from "@/db/schema";
 import { logEvent, type Executor } from "@/lib/audit";
 import type { CompanyUserIdentity } from "@/lib/auth/company-user";
 import { can, userActor } from "@/lib/auth/permissions";
 import { tenantScope } from "@/lib/tenant/scope";
 import { normalizePhone, PHONE_HINT } from "@/lib/validation";
+import { DELIVERY_STATUSES, type DeliveryStatus } from "./transitions";
 
 export type DeliveryErrorCode = "FORBIDDEN" | "INVALID" | "DUPLICATE_REFERENCE";
 
@@ -224,11 +225,105 @@ export async function createDelivery(
   });
 }
 
-export async function listDeliveries(db: Executor, actor: CompanyUserIdentity) {
+export type DeliveryFilters = {
+  status?: DeliveryStatus | string | null;
+  /** UUID d'un livreur, ou "UNASSIGNED" pour les livraisons sans livreur. */
+  courierId?: string | null;
+  /** Jour au format YYYY-MM-DD (fuseau Africa/Abidjan = UTC). */
+  date?: string | null;
+  /** Début de période YYYY-MM-DD (inclus). */
+  from?: string | null;
+  /** Fin de période YYYY-MM-DD (inclus). */
+  to?: string | null;
+  /** Recherche par référence de commande. */
+  reference?: string | null;
+};
+
+export type NormalizedDeliveryFilters = {
+  status: DeliveryStatus | null;
+  courierId: string | "UNASSIGNED" | null;
+  date: string | null;
+  from: string | null;
+  to: string | null;
+  startUtc: Date | null;
+  endExclusiveUtc: Date | null;
+  reference: string | null;
+};
+
+export type DeliveryListItem = typeof deliveries.$inferSelect & {
+  courierName: string | null;
+  courierPhone: string | null;
+};
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function parseValidYmd(raw: string | null | undefined): string | null {
+  const s = (raw ?? "").trim();
+  if (!YMD_RE.test(s)) return null;
+  const d = new Date(`${s}T00:00:00.000Z`);
+  if (Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== s) return null;
+  return s;
+}
+
+/** Normalise et assainit les paramètres de filtre (statut, livreur, date, référence). */
+export function normalizeDeliveryFilters(raw: DeliveryFilters = {}): NormalizedDeliveryFilters {
+  const rawStatus = (raw.status ?? "").trim();
+  const status = (DELIVERY_STATUSES as readonly string[]).includes(rawStatus)
+    ? (rawStatus as DeliveryStatus)
+    : null;
+
+  const rawCourier = (raw.courierId ?? "").trim();
+  const courierId = rawCourier === "UNASSIGNED" || UUID_RE.test(rawCourier) ? rawCourier : null;
+
+  const date = parseValidYmd(raw.date);
+  const from = date ?? parseValidYmd(raw.from);
+  const to = date ?? parseValidYmd(raw.to);
+
+  const startUtc = from ? new Date(`${from}T00:00:00.000Z`) : null;
+  const endExclusiveUtc = to ? new Date(new Date(`${to}T00:00:00.000Z`).getTime() + 86_400_000) : null;
+
+  const reference = (raw.reference ?? "").trim().slice(0, 100) || null;
+
+  return { status, courierId, date, from, to, startUtc, endExclusiveUtc, reference };
+}
+
+export async function listDeliveries(
+  db: Executor,
+  actor: CompanyUserIdentity,
+  rawFilters: DeliveryFilters = {},
+): Promise<DeliveryListItem[]> {
   assertCanCreate(actor);
-  return db
-    .select()
+  const f = normalizeDeliveryFilters(rawFilters);
+
+  const conditions: SQL[] = [eq(deliveries.isTest, false)];
+  if (f.status) conditions.push(eq(deliveries.status, f.status));
+  if (f.courierId === "UNASSIGNED") {
+    conditions.push(isNull(deliveries.courierId));
+  } else if (f.courierId) {
+    conditions.push(eq(deliveries.courierId, f.courierId));
+  }
+  if (f.startUtc) conditions.push(gte(deliveries.createdAt, f.startUtc));
+  if (f.endExclusiveUtc) conditions.push(lt(deliveries.createdAt, f.endExclusiveUtc));
+  if (f.reference) {
+    const escapedRef = f.reference.replace(/[\\%_]/g, "\\$&");
+    conditions.push(ilike(deliveries.reference, `%${escapedRef}%`));
+  }
+
+  const rows = await db
+    .select({
+      delivery: deliveries,
+      courierName: couriers.name,
+      courierPhone: couriers.phone,
+    })
     .from(deliveries)
-    .where(tenantScope(db, actor.companyId).filter(deliveries, eq(deliveries.isTest, false)))
+    .leftJoin(couriers, eq(couriers.id, deliveries.courierId))
+    .where(tenantScope(db, actor.companyId).filter(deliveries, ...conditions))
     .orderBy(desc(deliveries.createdAt));
+
+  return rows.map((r) => ({
+    ...r.delivery,
+    courierName: r.courierName ?? null,
+    courierPhone: r.courierPhone ?? null,
+  }));
 }

@@ -2,15 +2,18 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db, pool } from "@/db";
-import { auditEvents } from "@/db/schema";
+import { auditEvents, deliveries } from "@/db/schema";
 import { verifyAuditChain, type Executor } from "@/lib/audit";
 import { activateAccount } from "@/lib/auth/activation";
 import { loginCompanyUser, type CompanyUserIdentity } from "@/lib/auth/company-user";
 import { createPlatformAdmin } from "@/lib/auth/platform-admin";
 import { createCompanyWithAdmin } from "@/lib/companies/create-company";
+import { addCourier } from "@/lib/couriers/couriers";
 import { inviteUser } from "@/lib/team/team";
+import { tenantScope } from "@/lib/tenant/scope";
 import { importDeliveriesFromCsv } from "./csv-import";
 import { createDelivery, DeliveryError, listDeliveries } from "./deliveries";
+import { changeDeliveryStatus } from "./status";
 
 class Rollback extends Error {}
 async function inRolledBackTx(fn: (tx: Executor) => Promise<void>) {
@@ -249,6 +252,146 @@ describe("livraisons manuelles (base réelle)", () => {
       }
 
       await expectDeliveryError(importDeliveriesFromCsv(tx, returnsOfficer, csv), "FORBIDDEN");
+    });
+  });
+
+  it("filtres de la liste : statut, livreur (dont non affectée), date / plage, référence et cloisonnement", async () => {
+    await inRolledBackTx(async (tx) => {
+      const { a, b } = await twoCompanies(tx);
+      const c1 = await addCourier(tx, a, { name: "Kwamé", phone: "0700000101", employmentType: "EMPLOYEE" });
+      const c2 = await addCourier(tx, a, { name: "Kono", phone: "0700000102", employmentType: "INDEPENDENT" });
+      const cB = await addCourier(tx, b, { name: "Autre", phone: "0700000103", employmentType: "EMPLOYEE" });
+
+      const actor = { actorType: "USER" as const, actorId: a.id };
+
+      // 4 livraisons chez Alpha à des dates, statuts et livreurs différents
+      const d1 = await createDelivery(tx, a, {
+        reference: "CMD-F1",
+        recipientName: "Client 1",
+        recipientPhone: "0701111111",
+        address: "Cocody",
+      });
+      await changeDeliveryStatus(tx, {
+        companyId: a.companyId,
+        deliveryId: d1.id,
+        to: "ASSIGNED",
+        courierId: c1.courierId,
+        actor,
+      });
+
+      const d2 = await createDelivery(tx, a, {
+        reference: "CMD-F2",
+        recipientName: "Client 2",
+        recipientPhone: "0702222222",
+        address: "Plateau",
+      });
+      await changeDeliveryStatus(tx, {
+        companyId: a.companyId,
+        deliveryId: d2.id,
+        to: "ASSIGNED",
+        courierId: c2.courierId,
+        actor,
+      });
+
+      const d3 = await createDelivery(tx, a, {
+        reference: "CMD-F3",
+        recipientName: "Client 3",
+        recipientPhone: "0703333333",
+        address: "Marcory",
+      }); // reste CREATED (non affectée)
+
+      const d4 = await createDelivery(tx, a, {
+        reference: "AUTRE-4",
+        recipientName: "Client 4",
+        recipientPhone: "0704444444",
+        address: "Yopougon",
+      });
+      await changeDeliveryStatus(tx, {
+        companyId: a.companyId,
+        deliveryId: d4.id,
+        to: "CANCELLED",
+        actor,
+      });
+
+      // Livraison chez Beta à la même date et même statut pour vérifier le cloisonnement
+      const dB = await createDelivery(tx, b, {
+        reference: "CMD-F1",
+        recipientName: "Client B",
+        recipientPhone: "0705555555",
+        address: "Abobo",
+      });
+      await changeDeliveryStatus(tx, {
+        companyId: b.companyId,
+        deliveryId: dB.id,
+        to: "ASSIGNED",
+        courierId: cB.courierId,
+        actor: { actorType: "USER", actorId: b.id },
+      });
+
+      // Fixe des dates précises
+      await tenantScope(tx, a.companyId).update(
+        deliveries,
+        { createdAt: new Date("2026-11-10T09:00:00.000Z") },
+        eq(deliveries.id, d1.id),
+      );
+      await tenantScope(tx, a.companyId).update(
+        deliveries,
+        { createdAt: new Date("2026-11-15T14:30:00.000Z") },
+        eq(deliveries.id, d2.id),
+      );
+      await tenantScope(tx, a.companyId).update(
+        deliveries,
+        { createdAt: new Date("2026-11-15T23:45:00.000Z") },
+        eq(deliveries.id, d3.id),
+      );
+      await tenantScope(tx, a.companyId).update(
+        deliveries,
+        { createdAt: new Date("2026-11-16T08:00:00.000Z") },
+        eq(deliveries.id, d4.id),
+      );
+      await tenantScope(tx, b.companyId).update(
+        deliveries,
+        { createdAt: new Date("2026-11-10T09:00:00.000Z") },
+        eq(deliveries.id, dB.id),
+      );
+
+      // Filtre par statut
+      expect((await listDeliveries(tx, a, { status: "CREATED" })).map((d) => d.reference)).toEqual(["CMD-F3"]);
+      expect((await listDeliveries(tx, a, { status: "ASSIGNED" })).map((d) => d.reference)).toEqual(["CMD-F2", "CMD-F1"]);
+      expect((await listDeliveries(tx, a, { status: "CANCELLED" })).map((d) => d.reference)).toEqual(["AUTRE-4"]);
+
+      // Filtre par livreur + présence de courierName
+      const byC1 = await listDeliveries(tx, a, { courierId: c1.courierId });
+      expect(byC1).toHaveLength(1);
+      expect(byC1[0]).toMatchObject({ reference: "CMD-F1", courierName: "Kwamé" });
+
+      expect((await listDeliveries(tx, a, { courierId: c2.courierId })).map((d) => d.reference)).toEqual(["CMD-F2"]);
+      expect((await listDeliveries(tx, a, { courierId: "UNASSIGNED" })).map((d) => d.reference)).toEqual([
+        "AUTRE-4",
+        "CMD-F3",
+      ]);
+
+      // Filtre par jour et plage from/to
+      expect((await listDeliveries(tx, a, { date: "2026-11-10" })).map((d) => d.reference)).toEqual(["CMD-F1"]);
+      expect((await listDeliveries(tx, a, { date: "2026-11-15" })).map((d) => d.reference)).toEqual([
+        "CMD-F3",
+        "CMD-F2",
+      ]);
+      expect(
+        (await listDeliveries(tx, a, { from: "2026-11-10", to: "2026-11-15" })).map((d) => d.reference),
+      ).toEqual(["CMD-F3", "CMD-F2", "CMD-F1"]);
+
+      // Filtre par référence + combinaison de filtres
+      expect((await listDeliveries(tx, a, { reference: "CMD-F" })).map((d) => d.reference)).toEqual([
+        "CMD-F3",
+        "CMD-F2",
+        "CMD-F1",
+      ]);
+      expect(
+        (await listDeliveries(tx, a, { status: "ASSIGNED", date: "2026-11-15", courierId: c2.courierId })).map(
+          (d) => d.reference,
+        ),
+      ).toEqual(["CMD-F2"]);
     });
   });
 });

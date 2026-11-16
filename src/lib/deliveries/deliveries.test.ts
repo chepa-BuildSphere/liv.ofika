@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseCsvRows, prepareCsvImport } from "./csv-import";
-import { validateDeliveryInput } from "./deliveries";
+import { normalizeDeliveryFilters, validateDeliveryInput } from "./deliveries";
 
 describe("validateDeliveryInput", () => {
   const valid = {
@@ -170,5 +170,53 @@ describe("parseCsvRows / prepareCsvImport", () => {
     expect(r.errors[0].lineNumber).toBe(4);
     expect(r.errors[0].reference).toBe("CMD-10");
     expect(r.errors[0].message).toContain("ligne 2");
+  });
+});
+
+describe("normalizeDeliveryFilters", () => {
+  it("accepte un statut valide, UNASSIGNED ou un UUID de livreur, et une date YYYY-MM-DD", () => {
+    const courierId = "11111111-2222-3333-4444-555555555555";
+    const f1 = normalizeDeliveryFilters({
+      status: "ASSIGNED",
+      courierId,
+      date: "2026-11-15",
+      reference: " CMD-1042 ",
+    });
+    expect(f1).toEqual({
+      status: "ASSIGNED",
+      courierId,
+      date: "2026-11-15",
+      from: "2026-11-15",
+      to: "2026-11-15",
+      startUtc: new Date("2026-11-15T00:00:00.000Z"),
+      endExclusiveUtc: new Date("2026-11-16T00:00:00.000Z"),
+      reference: "CMD-1042",
+    });
+
+    const f2 = normalizeDeliveryFilters({ courierId: "UNASSIGNED", from: "2026-11-01", to: "2026-11-10" });
+    expect(f2.courierId).toBe("UNASSIGNED");
+    expect(f2.startUtc).toEqual(new Date("2026-11-01T00:00:00.000Z"));
+    expect(f2.endExclusiveUtc).toEqual(new Date("2026-11-11T00:00:00.000Z"));
+  });
+
+  it("ignore proprement les statuts, UUID et dates invalides", () => {
+    const f = normalizeDeliveryFilters({
+      status: "STATUT_INCONNU",
+      courierId: "pas-un-uuid",
+      date: "2026-02-30",
+      from: "pas-une-date",
+      to: "2026-13-01",
+      reference: "   ",
+    });
+    expect(f).toEqual({
+      status: null,
+      courierId: null,
+      date: null,
+      from: null,
+      to: null,
+      startUtc: null,
+      endExclusiveUtc: null,
+      reference: null,
+    });
   });
 });

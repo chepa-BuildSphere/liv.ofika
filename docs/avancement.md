@@ -10,7 +10,7 @@
 | **Phase 0 — Fondations** | ✅ Terminée (0.1 → 0.7) |
 | **Phase 1 — Comptes et droits** | ✅ Terminée (1.1 → 1.7) |
 | **Phase 2 — Livreurs** | ✅ Terminée (2.1 → 2.5) |
-| Phase 3 — Livraisons (côté entreprise) | 🔄 En cours : 3.1 → 3.2 faites → prochaine **tâche 3.3** (liste + filtres par statut, livreur, date) |
+| Phase 3 — Livraisons (côté entreprise) | 🔄 En cours : 3.1 → 3.3 faites → prochaine **tâche 3.4** (modifier / annuler avant prise en charge) |
 
 ### Détail de la phase 3
 
@@ -19,6 +19,10 @@
 | 3.1 | Créer une livraison à la main (`/espace/livraisons`) | 4 tests base (création `CREATED` par admin et gestionnaire + événement `DELIVERY_CREATED` et chaîne d'audit valide, doublon de référence refusé dans l'entreprise et autorisé ailleurs, cloisonnement `listDeliveries`, refus `RETURNS_OFFICER`) + 5 tests unitaires de validation |
 
 | 3.2 | Import CSV/Excel avec rapport d'erreurs ligne par ligne (`/espace/livraisons`) | 6 tests base (100 lignes valides importées `CREATED` + 4 lignes fausses signalées avec n° de ligne exact + 101 événements audit chaînés, cloisonnement et refus `RETURNS_OFFICER`) + 4 tests unitaires (`;`, `,`, `\t`, BOM, guillemets, colonnes manquantes, montants formatés, doublons internes) |
+
+| 3.3 | Liste + filtres (statut, livreur, date, référence) (`/espace/livraisons`) | 7 tests base (filtre par statut, par livreur ou `UNASSIGNED` avec `courierName`, par jour ou plage `from`/`to`, par référence, combinaison et cloisonnement) + 2 tests unitaires de normalisation des filtres |
+
+**Liste & filtres (3.3)** : `normalizeDeliveryFilters` et `listDeliveries` enrichi (`leftJoin` sur `couriers` pour exposer `courierName` / `courierPhone`) dans `src/lib/deliveries/deliveries.ts`, et barre de filtres GET sur `/espace/livraisons` (statut, livreur / « Non affectée », date, référence, bouton « Réinitialiser »).
 
 **Import CSV/Excel (3.2)** : `src/lib/deliveries/csv-import.ts` + `import-deliveries-form.tsx`. Supporte fichiers CSV (`;`, `,`) et copier-coller direct depuis Excel (`\t`), BOM UTF-8, guillemets RFC 4180, en-têtes FR/EN tolérants aux accents et modèle CSV téléchargeable. Insertion par lot via `tenantScope.insertMany` (`src/lib/tenant/scope.ts`) et chaînage d'audit groupé `logEvents` (`src/lib/audit/index.ts`), avec rapport d'erreurs ligne par ligne (champs invalides, doublons internes ou déjà présents en base).
 
