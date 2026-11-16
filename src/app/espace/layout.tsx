@@ -36,6 +36,11 @@ async function UserMenu() {
   const user = await requireUser();
   return (
     <div className="flex items-center gap-3">
+      {can(userActor(user), "delivery.create", { companyId: user.companyId }).allowed && (
+        <Link href="/espace/livraisons" className="link text-sm">
+          Livraisons
+        </Link>
+      )}
       {can(userActor(user), "couriers.manage", { companyId: user.companyId }).allowed && (
         <Link href="/espace/livreurs" className="link text-sm">
           Livreurs

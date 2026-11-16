@@ -10,7 +10,15 @@
 | **Phase 0 — Fondations** | ✅ Terminée (0.1 → 0.7) |
 | **Phase 1 — Comptes et droits** | ✅ Terminée (1.1 → 1.7) |
 | **Phase 2 — Livreurs** | ✅ Terminée (2.1 → 2.5) |
-| Phase 3 — Livraisons (côté entreprise) | 🔄 À suivre : **tâche 3.1** (créer une livraison à la main) |
+| Phase 3 — Livraisons (côté entreprise) | 🔄 En cours : 3.1 faite → prochaine **tâche 3.2** (import CSV/Excel avec rapport d'erreurs ligne par ligne) |
+
+### Détail de la phase 3
+
+| # | Tâche | Preuve |
+|---|---|---|
+| 3.1 | Créer une livraison à la main (`/espace/livraisons`) | 4 tests base (création `CREATED` par admin et gestionnaire + événement `DELIVERY_CREATED` et chaîne d'audit valide, doublon de référence refusé dans l'entreprise et autorisé ailleurs, cloisonnement `listDeliveries`, refus `RETURNS_OFFICER`) + 5 tests unitaires de validation |
+
+**Création manuelle (3.1)** : `src/lib/deliveries/deliveries.ts` (`createDelivery`, `listDeliveries`, `validateDeliveryInput`) et `/espace/livraisons`. Réservée à l'admin entreprise et au gestionnaire (`delivery.create`). Normalise le téléphone destinataire (`normalizePhone`), impose un montant entier positif/nul en F CFA, refuse `QR_OTP` tant que l'option est en maintenance dans le MVP, vérifie l'unicité de `reference` dans l'entreprise (hors mode test) et journalise `DELIVERY_CREATED` dans la même transaction.
 
 ### Détail de la phase 2
 
