@@ -1,7 +1,8 @@
-import { eq } from "drizzle-orm";
-import { deliveries } from "@/db/schema";
+import { and, eq } from "drizzle-orm";
+import { companies, deliveries, deliveryAttempts } from "@/db/schema";
 import { logEvent, type AuditEventInput, type Executor } from "@/lib/audit";
 import { tenantScope } from "@/lib/tenant/scope";
+import { enqueueDeliveryWebhookEvent, webhookEventForStatus } from "@/lib/webhooks/webhooks";
 import { checkTransition, type DeliveryStatus, type TransitionError, type TransitionOptions } from "./transitions";
 
 export class TransitionRefused extends Error {
@@ -41,8 +42,10 @@ export async function changeDeliveryStatus(executor: Executor, input: ChangeStat
       .select({
         id: deliveries.id,
         companyId: deliveries.companyId,
+        isTest: deliveries.isTest,
         status: deliveries.status,
         courierId: deliveries.courierId,
+        currentAttempt: deliveries.currentAttempt,
       })
       .from(deliveries)
       .where(tenantScope(tx, input.companyId).filter(deliveries, eq(deliveries.id, input.deliveryId)))
@@ -78,9 +81,69 @@ export async function changeDeliveryStatus(executor: Executor, input: ChangeStat
       case "PICKED_UP":
         changes.pickedUpAt = now;
         break;
-      case "DELIVERED":
+      case "ARRIVED": {
+        const nextAttempt = current.currentAttempt + 1;
+        changes.currentAttempt = nextAttempt;
+        if (current.courierId) {
+          await tx.insert(deliveryAttempts).values({
+            deliveryId: current.id,
+            courierId: current.courierId,
+            attemptNumber: nextAttempt,
+            outcome: "IN_PROGRESS",
+            arrivedAt: now,
+            arrivedLat: input.context?.lat ?? null,
+            arrivedLng: input.context?.lng ?? null,
+            arrivedAccuracy: input.context?.accuracy ?? null,
+          });
+        }
+        break;
+      }
+      case "DELIVERED": {
         changes.proofMethod = input.proofMethod;
         changes.deliveredAt = now;
+        const [company] = await tx
+          .select({
+            billingEnabled: companies.billingEnabled,
+            pricePerDelivery: companies.pricePerDelivery,
+          })
+          .from(companies)
+          .where(eq(companies.id, current.companyId))
+          .limit(1);
+        changes.billedPrice = current.isTest
+          ? null
+          : company?.billingEnabled
+            ? company.pricePerDelivery
+            : 0;
+        if (current.currentAttempt > 0) {
+          await tx
+            .update(deliveryAttempts)
+            .set({ outcome: "DELIVERED" })
+            .where(
+              and(
+                eq(deliveryAttempts.deliveryId, current.id),
+                eq(deliveryAttempts.attemptNumber, current.currentAttempt),
+              ),
+            );
+        }
+        break;
+      }
+      case "DELIVERY_FAILED":
+        if (current.currentAttempt > 0) {
+          await tx
+            .update(deliveryAttempts)
+            .set({
+              outcome: "FAILED",
+              failedAt: now,
+              failedLat: input.context?.lat ?? null,
+              failedLng: input.context?.lng ?? null,
+            })
+            .where(
+              and(
+                eq(deliveryAttempts.deliveryId, current.id),
+                eq(deliveryAttempts.attemptNumber, current.currentAttempt),
+              ),
+            );
+        }
         break;
       case "CANCELLED":
         changes.cancelledAt = now;
@@ -101,7 +164,14 @@ export async function changeDeliveryStatus(executor: Executor, input: ChangeStat
         ...(input.context?.payload as object | undefined),
         ...(input.reason ? { reason: input.reason } : {}),
         ...(input.proofMethod ? { proofMethod: input.proofMethod } : {}),
+        ...(input.to === "DELIVERED" ? { billedPrice: changes.billedPrice ?? null } : {}),
         ...(input.to === "ASSIGNED" ? { courierId: input.courierId, previousCourierId: current.courierId } : {}),
+        ...(input.to === "ARRIVED"
+          ? {
+              attemptNumber: changes.currentAttempt,
+              gpsMissing: input.context?.lat == null || input.context?.lng == null,
+            }
+          : {}),
       },
       lat: input.context?.lat,
       lng: input.context?.lng,
@@ -109,6 +179,30 @@ export async function changeDeliveryStatus(executor: Executor, input: ChangeStat
       ip: input.context?.ip,
       userAgent: input.context?.userAgent,
     });
+
+    const webhookEvent = webhookEventForStatus(current.status, input.to);
+    if (webhookEvent) {
+      const payloadObj =
+        input.context?.payload &&
+        typeof input.context.payload === "object" &&
+        !Array.isArray(input.context.payload)
+          ? (input.context.payload as Record<string, unknown>)
+          : null;
+      const failureReason =
+        webhookEvent === "delivery.failed"
+          ? typeof payloadObj?.failureReason === "string"
+            ? payloadObj.failureReason
+            : (input.reason ?? null)
+          : null;
+
+      await enqueueDeliveryWebhookEvent(tx, {
+        companyId: current.companyId,
+        eventType: webhookEvent,
+        delivery: updated,
+        failureReason,
+        occurredAt: now,
+      });
+    }
 
     return updated;
   });

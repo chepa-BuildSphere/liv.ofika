@@ -1,6 +1,7 @@
 import { and, asc, eq, isNull } from "drizzle-orm";
 import { companyCouriers, courierAccessCodes, couriers } from "@/db/schema";
 import { logEvent, type Executor } from "@/lib/audit";
+import type { AuthenticatedApiKey } from "@/lib/api-keys/api-keys";
 import type { CompanyUserIdentity } from "@/lib/auth/company-user";
 import { can, userActor } from "@/lib/auth/permissions";
 import { tenantScope } from "@/lib/tenant/scope";
@@ -120,8 +121,17 @@ export type CompanyCourier = {
 };
 
 /** Livreurs de l'entreprise de l'acteur, et seulement ce qu'elle doit savoir d'eux. */
-export async function listCouriers(db: Executor, actor: CompanyUserIdentity): Promise<CompanyCourier[]> {
-  assertCanManage(actor);
+export async function listCouriers(
+  db: Executor,
+  actor: CompanyUserIdentity | AuthenticatedApiKey,
+): Promise<CompanyCourier[]> {
+  if ("environment" in actor) {
+    if (!can({ kind: "apiKey", id: actor.id, companyId: actor.companyId }, "delivery.create", { companyId: actor.companyId }).allowed) {
+      throw new CourierError("FORBIDDEN", "Clé API non autorisée.");
+    }
+  } else {
+    assertCanManage(actor);
+  }
   const rows = await db
     .select({
       id: couriers.id,

@@ -9,6 +9,7 @@ import {
   cancelDelivery,
   createDelivery,
   DeliveryError,
+  forceDeliverDelivery,
   updateDelivery,
   type DeliveryField,
 } from "@/lib/deliveries/deliveries";
@@ -175,6 +176,41 @@ export async function assignCourierAction(_prev: AssignCourierState, formData: F
     return { status: "done" };
   } catch (e) {
     if (e instanceof DeliveryError) return { status: "error", message: e.message };
+    throw e;
+  }
+}
+
+export type ForceDeliverState =
+  | { status: "idle" }
+  | { status: "error"; message?: string; fields: Fields }
+  | { status: "done" };
+
+export async function forceDeliverAction(
+  _prev: ForceDeliverState,
+  formData: FormData,
+): Promise<ForceDeliverState> {
+  const actor = await requireUser();
+  const deliveryId = String(formData.get("deliveryId") ?? "");
+  const reason = String(formData.get("reason") ?? "");
+  const attachmentUrl = String(formData.get("attachmentUrl") ?? "");
+
+  try {
+    await forceDeliverDelivery(
+      db,
+      actor,
+      { deliveryId, reason, attachmentUrl },
+      await getRequestMeta(),
+    );
+    refresh();
+    return { status: "done" };
+  } catch (e) {
+    if (e instanceof DeliveryError) {
+      return {
+        status: "error",
+        message: e.fields ? undefined : e.message,
+        fields: e.fields ?? {},
+      };
+    }
     throw e;
   }
 }

@@ -20,6 +20,7 @@ const ALLOWED: Record<string, string> = {
   "lib/auth/company-user.ts": "connexion : l'e-mail est cherché dans toutes les entreprises, puis la session par identifiant",
   "lib/auth/activation.ts": "lien d'activation : l'utilisateur est retrouvé par son jeton, avant toute connexion",
   "lib/companies/create-company.ts": "l'admin plateforme crée l'entreprise et son premier admin",
+  "lib/companies/register-company.ts": "auto-inscription publique : création autonome d'une entreprise et de son premier admin",
   "app/admin/": "back-office plateforme : lecture support, journalisée (tâche 1.7)",
 };
 

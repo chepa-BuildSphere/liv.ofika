@@ -98,3 +98,60 @@ export function checkTransition(
   }
   return { ok: true, forced: false };
 }
+
+export const DELIVERY_STATUS_LABEL: Record<DeliveryStatus, string> = {
+  CREATED: "Créée",
+  ASSIGNED: "Affectée",
+  PICKED_UP: "Prise en charge",
+  ARRIVED: "Arrivé",
+  DELIVERED: "Livré",
+  DELIVERY_FAILED: "Échec",
+  RETURNING: "Retour en cours",
+  RETURN_RECEIVED: "Retour réceptionné",
+  CANCELLED: "Annulée",
+};
+
+export function deliveryStatusLabel(status: DeliveryStatus, proofMethod?: ProofMethod | null): string {
+  if (status === "DELIVERED" && proofMethod === "MANUAL") return "Livré (forcé)";
+  return DELIVERY_STATUS_LABEL[status];
+}
+
+export const FAILURE_REASONS = [
+  "RECIPIENT_ABSENT",
+  "RECIPIENT_UNREACHABLE",
+  "RECIPIENT_REFUSED",
+  "WRONG_ADDRESS",
+  "PAYMENT_UNAVAILABLE",
+  "PACKAGE_DAMAGED",
+  "OTHER",
+] as const;
+
+export type FailureReason = (typeof FAILURE_REASONS)[number];
+
+export const FAILURE_REASON_LABEL: Record<FailureReason, string> = {
+  RECIPIENT_ABSENT: "Destinataire absent",
+  RECIPIENT_UNREACHABLE: "Destinataire injoignable",
+  RECIPIENT_REFUSED: "Destinataire ayant refusé le colis",
+  WRONG_ADDRESS: "Adresse incorrecte",
+  PAYMENT_UNAVAILABLE: "Paiement indisponible",
+  PACKAGE_DAMAGED: "Colis endommagé",
+  OTHER: "Autre motif",
+};
+
+export const AFTER_FAILURE_CHOICES = ["RETRY", "RETURN_TO_DEPOT"] as const;
+
+export type AfterFailureChoice = (typeof AFTER_FAILURE_CHOICES)[number];
+
+export const AFTER_FAILURE_LABEL: Record<AfterFailureChoice, string> = {
+  RETRY: "Nouvelle tentative",
+  RETURN_TO_DEPOT: "Retour au dépôt",
+};
+
+export const RETURN_CONDITIONS = ["GOOD", "DAMAGED"] as const;
+
+export type ReturnCondition = (typeof RETURN_CONDITIONS)[number];
+
+export const RETURN_CONDITION_LABEL: Record<ReturnCondition, string> = {
+  GOOD: "Bon état",
+  DAMAGED: "Endommagé",
+};

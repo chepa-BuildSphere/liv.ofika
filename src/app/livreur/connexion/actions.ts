@@ -22,11 +22,11 @@ export async function courierLoginAction(_prev: CourierLoginState, formData: For
   }
 
   await setCourierCookie(result.token, result.expiresAt);
-  redirect("/livreur");
+  redirect("/courier");
 }
 
 export async function courierLogoutAction() {
   await logoutCourier(db, await readCourierToken(), await getRequestMeta());
   await clearCourierCookie();
-  redirect("/livreur/connexion");
+  redirect("/courier/login");
 }

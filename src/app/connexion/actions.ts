@@ -23,5 +23,5 @@ export async function userLoginAction(_prev: UserLoginState, formData: FormData)
   if (!result.ok) return { error: MESSAGES[result.error], email };
 
   await setUserCookie(result.token, result.expiresAt);
-  redirect("/espace");
+  redirect("/dashboard");
 }

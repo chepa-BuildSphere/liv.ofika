@@ -1,10 +1,17 @@
 import { eq, inArray } from "drizzle-orm";
 import { deliveries } from "@/db/schema";
 import { logEvents, type Executor } from "@/lib/audit";
-import type { CompanyUserIdentity } from "@/lib/auth/company-user";
 import { can, userActor } from "@/lib/auth/permissions";
 import { tenantScope } from "@/lib/tenant/scope";
-import { DeliveryError, validateDeliveryInput, type DeliveryField, type ValidatedDeliveryInput } from "./deliveries";
+import { enqueueDeliveryWebhookEvent } from "@/lib/webhooks/webhooks";
+import {
+  DeliveryError,
+  isApiKeyCaller,
+  validateDeliveryInput,
+  type DeliveryField,
+  type EnterpriseCaller,
+  type ValidatedDeliveryInput,
+} from "./deliveries";
 
 export const MAX_IMPORT_ROWS = 500;
 
@@ -309,13 +316,20 @@ export type CsvImportResult =
 
 export async function importDeliveriesFromCsv(
   db: Executor,
-  actor: CompanyUserIdentity,
+  actor: EnterpriseCaller,
   csvText: string,
   meta: { ip?: string | null; userAgent?: string | null } = {},
 ): Promise<CsvImportResult> {
-  if (!can(userActor(actor), "delivery.create", { companyId: actor.companyId }).allowed) {
+  const permActor = isApiKeyCaller(actor)
+    ? ({ kind: "apiKey", id: actor.id, companyId: actor.companyId } as const)
+    : userActor(actor);
+  if (!can(permActor, "delivery.create", { companyId: actor.companyId }).allowed) {
     throw new DeliveryError("FORBIDDEN", "Réservé à l'admin entreprise et au gestionnaire.");
   }
+  const isTest = isApiKeyCaller(actor) ? actor.isTest : false;
+  const auditActor = isApiKeyCaller(actor)
+    ? { actorType: "API_KEY" as const, actorId: actor.id }
+    : { actorType: "USER" as const, actorId: actor.id };
 
   const prep = prepareCsvImport(csvText);
   if (!prep.ok) return prep;
@@ -335,7 +349,7 @@ export async function importDeliveriesFromCsv(
     const candidateRefs = prep.candidates.map((c) => c.data.reference);
     const existing = await tenantScope(tx, actor.companyId).selectAll(
       deliveries,
-      eq(deliveries.isTest, false),
+      eq(deliveries.isTest, isTest),
       inArray(deliveries.reference, candidateRefs),
     );
     const existingRefs = new Set(existing.map((e) => e.reference));
@@ -358,7 +372,7 @@ export async function importDeliveriesFromCsv(
       toInsert.map((c) => ({
         ...c.data,
         status: "CREATED" as const,
-        isTest: false,
+        isTest,
       })),
     );
 
@@ -369,8 +383,8 @@ export async function importDeliveriesFromCsv(
           companyId: actor.companyId,
           deliveryId: row.id,
           eventType: "DELIVERY_CREATED",
-          actorType: "USER",
-          actorId: actor.id,
+          actorType: auditActor.actorType,
+          actorId: auditActor.actorId,
           fromStatus: null,
           toStatus: "CREATED",
           payload: {
@@ -382,11 +396,22 @@ export async function importDeliveriesFromCsv(
             amountToCollect: row.amountToCollect,
             proofMode: row.proofMode,
             source: "CSV_IMPORT",
+            ...(isTest ? { livemode: false } : {}),
           },
           ip: meta.ip,
           userAgent: meta.userAgent,
         })),
       );
+
+      for (const row of inserted) {
+        await enqueueDeliveryWebhookEvent(tx, {
+          companyId: actor.companyId,
+          eventType: "delivery.created",
+          delivery: row,
+          courierName: null,
+          occurredAt: row.createdAt,
+        });
+      }
     }
 
     return {

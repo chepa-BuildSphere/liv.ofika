@@ -4,18 +4,18 @@
 
 | Élément | Valeur |
 | :--- | :--- |
-| Plateforme | Ofika Delivery, gestion des livraisons avec preuve de livraison (Abidjan) |
-| Environnement | Développement (poste du responsable, base Neon branche dev) |
-| URL | http://localhost:5000 (pas encore d'URL de staging) |
-| Version testée | Phase 1 « Comptes et droits », commit aa74036 (branche develop) |
-| Périmètre | Back-office plateforme, création d'entreprise, activation de compte, connexion à l'espace entreprise, équipe et rôles, droits et cloisonnement entre entreprises, consultations du support. Hors périmètre : livraisons, livreurs, QR, API, facturation (phases suivantes). |
+| Plateforme | Ofika Delivery, gestion des livraisons B2B avec preuve certifiée (Abidjan) |
+| Environnement | Développement & Recette (poste local / base Neon Cloud PostgreSQL) |
+| URL principale | http://localhost:5000 (redirections canoniques anglaises actives) |
+| Version testée | **MVP Complet — Phases 0 à 8 + Auto-inscription directe & Landing SEO** |
+| Périmètre couvert | **End-to-End complet** : Landing page SEO (`/`), Auto-inscription entreprise (`/register`), Connexion business (`/login`), Back-office super admin (`/admin`), Équipe & rôles, Livreurs & Premier accès PIN (`/courier/first-access`), PWA Livreur (`/courier`), Livraisons manuelles & Import CSV, Bordereau PDF avec QR, Prise en charge lot, Arrivée GPS certifiée, QR code bilatéral 3 min (`/c/[token]`) avec code secret 4 chiffres, Déclaration d'échec & Réception des retours dépôt (`/dashboard/retours`), Forcer Livré avec motif, Facturation 10 F CFA & Relevé mensuel (`/dashboard/facturation`), Clés API test/live & Webhooks HMAC (`/dashboard/webhooks`). |
 
 ## Consignes aux testeurs
 
 - Suivre les étapes dans l'ordre, sans en sauter. Cocher [ ] OK si le résultat observé correspond au résultat attendu, [ ] KO s'il ne correspond pas (et consigner le bug), [ ] NA si le test ne s'applique pas ou ne peut pas être exécuté.
 - Comptes partagés : ne jamais modifier le mot de passe ni l'e-mail du compte admin plateforme, ni le désactiver. Les tests qui désactivent un compte ou provoquent un blocage se font avec les comptes créés par le testeur pendant la recette.
-- Exécuter les modules dans l'ordre : chaque module s'appuie sur les comptes créés dans les précédents.
-- La base est hébergée loin d'Abidjan : une page peut mettre jusqu'à 5 secondes à répondre. Une lenteur seule n'est pas un KO, sauf au-delà de 15 secondes.
+- Exécuter les modules dans l'ordre : chaque module s'appuie sur les comptes et données créés dans les précédents.
+- La base est hébergée sur Neon Cloud : une page peut mettre jusqu'à 3 à 5 secondes à répondre lors du réveil du compute. Une lenteur seule n'est pas un KO, sauf au-delà de 15 secondes.
 - Légende des priorités : **P1** critique (bloque la mise en service), **P2** important, **P3** mineur.
 - Aucun test n'a d'effet réel (pas d'e-mail ni de SMS envoyé par la plateforme). Le bouton « Envoyer par WhatsApp » ouvre WhatsApp mais n'envoie rien tant qu'on n'appuie pas sur Envoyer dans WhatsApp.
 
@@ -28,13 +28,16 @@
 
 ## Répertoire des comptes de test
 
-| Profil | Nom / Fonction | E-mail de connexion | Mot de passe de test | Téléphone | Rôle |
+| Profil | Nom / Fonction | E-mail / Identifiant | Mot de passe / PIN | Téléphone | Rôle & Espace |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| 1 | Admin plateforme de recette | À FOURNIR | À FOURNIR | Aucun | Back-office plateforme (créé par le responsable avec npm run admin:create) |
-| 2 | Awa Koné, gérante de « Boutique Awa Recette » | awa.recette@ofika.test | choisi au test 3.4 : Awa-Recette-2026 | +225 07 07 07 07 07 | Admin entreprise (créé au Module 2) |
-| 3 | Kofi Yao, gestionnaire chez « Boutique Awa Recette » | kofi.recette@ofika.test | choisi au test 5.3 : Kofi-Recette-2026 | +225 05 05 05 05 05 | Gestionnaire et Responsable retours (créé au Module 5) |
-| 4 | Aya Traoré, responsable retours chez « Boutique Awa Recette » | aya.recette@ofika.test | choisi au test 5.4 : Aya-Recette-2026 | Aucun | Responsable retours (créé au Module 5) |
-| 5 | Moussa Diallo, gérant de « Maquis Moussa Recette » | moussa.recette@ofika.test | choisi au test 2.8 : Moussa-Recette-2026 | +225 01 01 01 01 01 | Admin entreprise d'une seconde entreprise (créé au Module 2) |
+| 1 | Admin plateforme de recette | À FOURNIR | À FOURNIR | Aucun | Back-office plateforme (`npm run admin:create`) |
+| 2 | Awa Koné, gérante de « Boutique Awa Recette » | awa.recette@ofika.test | Awa-Recette-2026 (Test 3.4) | +225 07 07 07 07 07 | Admin entreprise (créé au Module 2) |
+| 3 | Kofi Yao, gestionnaire chez « Boutique Awa Recette » | kofi.recette@ofika.test | Kofi-Recette-2026 (Test 5.3) | +225 05 05 05 05 05 | Gestionnaire et Responsable retours (Module 5) |
+| 4 | Aya Traoré, responsable retours chez « Boutique Awa Recette » | aya.recette@ofika.test | Aya-Recette-2026 (Test 5.4) | Aucun | Responsable retours (créé au Module 5) |
+| 5 | Moussa Diallo, gérant de « Maquis Moussa Recette » | moussa.recette@ofika.test | Moussa-Recette-2026 (Test 2.8) | +225 01 01 01 01 01 | Admin entreprise seconde société (Module 2) |
+| 6 | Kouassi Paul, livreur salarié « Boutique Awa Recette » | 07 10 10 10 10 | PIN 123456 (Module 12) | +225 07 10 10 10 10 | Livreur PWA (`/courier`) |
+| 7 | Diallo Sekou, coursier indépendant partenaire | 05 20 20 20 20 | PIN 654321 (Module 12) | +225 05 20 20 20 20 | Livreur PWA (`/courier`) |
+| 8 | Marcelle Bamba, gérante « Super Marché Cocody » | marcelle.cocody@ofika.test | Marcelle-Cocody-2026 (Module 11) | +225 07 88 88 88 88 | Admin entreprise (Auto-inscription `/register`) |
 
 Préparation avant la recette : le responsable démarre l'application (npm run dev), vérifie que http://localhost:5000/admin/login s'ouvre, et remet aux testeurs l'e-mail et le mot de passe du compte 1. Les comptes 2 à 5 n'existent pas encore : ils sont créés par les tests eux-mêmes. Si la recette est rejouée, ajouter un suffixe aux e-mails (awa.recette2@ofika.test…), car un e-mail ne peut servir qu'une fois.
 
@@ -198,26 +201,158 @@ Pré-requis du module : un téléphone Android avec Chrome sur le même réseau 
 | | | |
 | **Décision finale :** | [ ] **Conforme** | [ ] **Non Conforme** |
 
-## Matrice de couverture
+## Module 10 : Landing Page Vitrine, SEO et Navigation Publique
 
-| Module | Tests | dont P1 | Fonctionnalités couvertes |
+Pré-requis du module : navigateur Chrome sur ordinateur et smartphone (ou simulateur 375 px). Aucune session active.
+
+| N° | Priorité | Intitulé du Test | Scénario pas-à-pas | Résultat attendu | Validation |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 10.1 | P1 | Affichage de la page d'accueil vitrine | 1. Ouvrir une fenêtre de navigation privée. 2. Aller sur http://localhost:5000/. | La page d'accueil s'affiche rapidement avec le titre percutant sur la fin des palabres de livraison, l'illustration animée du colis scellé SHA-256 à Cocody, la section fonctionnement en 3 étapes, la tarification transparente, le comparatif terrain et l'accordéon FAQ. | [ ] OK [ ] KO [ ] NA |
+| 10.2 | P1 | Ancres de navigation rapide | 1. Cliquer sur le lien « Fonctionnement » dans l'en-tête. 2. Cliquer sur le lien « Tarifs (10 F CFA) ». | L'écran défile en douceur vers `#how-it-works` (explications en 3 étapes) puis vers `#pricing` (carte tarifaire). | [ ] OK [ ] KO [ ] NA |
+| 10.3 | P1 | Redirections canoniques 308 (SEO anglais) | 1. Saisir manuellement http://localhost:5000/inscription dans la barre d'adresse. 2. Saisir http://localhost:5000/connexion. 3. Saisir http://localhost:5000/livreur. 4. Saisir http://localhost:5000/espace. | Les requêtes sont redirigées automatiquement en code 308 vers les URL anglaises canoniques respectives : `/register`, `/login`, `/courier` et `/dashboard`. | [ ] OK [ ] KO [ ] NA |
+| 10.4 | P2 | Carte tarifaire épurée sans bordure agressive | 1. Descendre sur la section `#pricing`. 2. Observer le cadre de l'offre « Formule Unique Business ». | La carte est sur fond blanc avec un contour subtil et ombre adoucie (`shadow-xl`), sans aucune bordure noire épaisse. Le tarif affiche « 10 F CFA / livraison livrée », 0 F abonnement et gratuit sur échecs/retours. | [ ] OK [ ] KO [ ] NA |
+| 10.5 | P2 | Accordéon FAQ interactif | 1. Descendre sur la section « Questions fréquentes ». 2. Cliquer sur la question « Comment ça protège le livreur sur sa moto à Abidjan ? ». 3. Cliquer sur « Si le client refuse le colis ou n'a pas l'argent… ». | L'accordéon se déplie et se replie de manière fluide. Les explications concrètes sur la protection du livreur et la procédure de retour s'affichent lisiblement. | [ ] OK [ ] KO [ ] NA |
+
+| Nom du Testeur | Date | Commentaires & Remarques |
+| :--- | :--- | :--- |
+| | | |
+| **Décision finale :** | [ ] **Conforme** | [ ] **Non Conforme** |
+
+## Module 11 : Auto-inscription Entreprise Directe en Libre-Service
+
+Pré-requis du module : fenêtre de navigation privée sans session ouverte. Compte 8 du répertoire (Marcelle Bamba).
+
+| N° | Priorité | Intitulé du Test | Scénario pas-à-pas | Résultat attendu | Validation |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 11.1 | P1 | Accès au formulaire d'inscription | 1. Depuis la page d'accueil `/`, cliquer sur le bouton orange « Créer mon compte entreprise ». | L'adresse devient http://localhost:5000/register. Titre « Inscription Entreprise ». Le formulaire comporte : nom de l'entreprise, téléphone WhatsApp, nom complet de l'administrateur, e-mail de connexion, mot de passe et confirmation. | [ ] OK [ ] KO [ ] NA |
+| 11.2 | P2 | Contrôle des saisies invalides | 1. Laisser tous les champs vides et cliquer sur « Créer mon compte et démarrer ». 2. Saisir un e-mail erroné (ex: `marcelle@test`). 3. Saisir un mot de passe de 6 caractères. | Les erreurs s'affichent sous chaque champ : nom requis, email valide requis, mot de passe d'au moins 10 caractères requis. Aucun compte n'est créé. | [ ] OK [ ] KO [ ] NA |
+| 11.3 | P1 | Création réussie et connexion directe | 1. Saisir : Entreprise = « Super Marché Cocody », Téléphone = `+225 07 88 88 88 88`, Nom admin = « Marcelle Bamba », E-mail = `marcelle.cocody@ofika.test`, Mot de passe = `Marcelle-Cocody-2026`, Confirmation = `Marcelle-Cocody-2026`. 2. Cliquer sur « Créer mon compte et démarrer ». | L'inscription réussit instantanément sans carte bancaire. La page bascule directement sur http://localhost:5000/dashboard avec l'en-tête « Super Marché Cocody » et le rôle « Admin entreprise ». | [ ] OK [ ] KO [ ] NA |
+| 11.4 | P1 | Rejet d'un e-mail déjà existant | 1. Se déconnecter. 2. Retourner sur `/register`. 3. Tenter de recréer une entreprise avec le même e-mail `marcelle.cocody@ofika.test`. | Message d'erreur clair : « Cet e-mail est déjà utilisé par un autre compte. Connectez-vous ou utilisez un autre e-mail. ». Aucun doublon n'est créé en base. | [ ] OK [ ] KO [ ] NA |
+
+| Nom du Testeur | Date | Commentaires & Remarques |
+| :--- | :--- | :--- |
+| | | |
+| **Décision finale :** | [ ] **Conforme** | [ ] **Non Conforme** |
+
+## Module 12 : Gestion des Livreurs & Premier Accès PIN PWA
+
+Pré-requis du module : être connecté à l'espace entreprise avec le compte 2 (Awa Koné). Téléphone mobile ou simulateur Chrome.
+
+| N° | Priorité | Intitulé du Test | Scénario pas-à-pas | Résultat attendu | Validation |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 12.1 | P1 | Ajouter un coursier salarié et un indépendant | 1. Sur `/dashboard`, cliquer sur « Livreurs ». 2. Cliquer sur « Ajouter un livreur ». 3. Saisir « Kouassi Paul », téléphone `+225 07 10 10 10 10`, type « Salarié ». 4. Répéter l'opération pour « Diallo Sekou », téléphone `+225 05 20 20 20 20`, type « Indépendant ». | Les deux livreurs apparaissent dans la liste avec le statut « En attente du premier accès » et un bouton orange « Code d'accès ». | [ ] OK [ ] KO [ ] NA |
+| 12.2 | P1 | Générer le code d'activation initial | 1. Sur la ligne de Kouassi Paul, cliquer sur « Code d'accès ». 2. Noter le code à 6 chiffres affiché et copier le lien d'accès. | Un encadré affiche un code temporaire valable 48h ainsi que le lien direct vers `/courier/first-access`. Bouton « Copier » et option d'envoi WhatsApp présents. | [ ] OK [ ] KO [ ] NA |
+| 12.3 | P1 | Premier accès du livreur et choix du PIN | 1. Ouvrir une nouvelle fenêtre privée (vue smartphone). 2. Aller sur `/courier/first-access`. 3. Saisir le téléphone `07 10 10 10 10` et le code temporaire. 4. Saisir le code PIN `123456` dans les deux champs PIN et confirmer. | Message vert « Votre code PIN est configuré avec succès ! ». Bouton invitant à se connecter à l'espace livreur. | [ ] OK [ ] KO [ ] NA |
+| 12.4 | P1 | Connexion PWA livreur avec téléphone + PIN | 1. Aller sur http://localhost:5000/courier/login. 2. Saisir le téléphone `07 10 10 10 10` et le code PIN `123456`. 3. Valider. | La page bascule sur `/courier`. Titre « Espace Livreur », nom « Kouassi Paul », badge de statut réseau « En ligne », onglets « À prendre en charge » et « En tournée ». | [ ] OK [ ] KO [ ] NA |
+| 12.5 | P2 | Blocage de sécurité après 5 mauvais PIN | 1. Se déconnecter de l'espace livreur. 2. Sur `/courier/login`, saisir le téléphone et un faux PIN 5 fois de suite. | Au 5e essai erroné, le compte livreur est verrouillé pendant 15 minutes avec le message « Compte temporairement bloqué pour votre sécurité suite à plusieurs tentatives erronées. ». | [ ] OK [ ] KO [ ] NA |
+
+| Nom du Testeur | Date | Commentaires & Remarques |
+| :--- | :--- | :--- |
+| | | |
+| **Décision finale :** | [ ] **Conforme** | [ ] **Non Conforme** |
+
+## Module 13 : Création de Livraison, Import CSV & Bordereau PDF
+
+Pré-requis du module : être connecté à l'espace entreprise avec le compte 2 (Awa Koné).
+
+| N° | Priorité | Intitulé du Test | Scénario pas-à-pas | Résultat attendu | Validation |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 13.1 | P1 | Créer une livraison manuelle avec affectation | 1. Sur `/dashboard`, cliquer sur « Livraisons ». 2. Cliquer sur « Nouvelle livraison ». 3. Remplir : Référence = `CMD-REC-001`, Destinataire = `Aïcha Koné`, Téléphone = `+225 07 01 02 03 04`, Commune = `Cocody`, Adresse = `Rue des Ambassades`, Montant COD = `18500`, Livreur = « Kouassi Paul ». 4. Valider. | La livraison est créée au statut `ASSIGNED` (Affectée). Elle apparaît dans le tableau avec le nom du livreur affecté, le montant COD de 18 500 F CFA et un badge jaune « Affectée ». | [ ] OK [ ] KO [ ] NA |
+| 13.2 | P1 | Import groupé par fichier CSV | 1. Sur `/dashboard/livraisons`, cliquer sur « Importer un fichier CSV ». 2. Coller un bloc de 5 lignes au format `Référence;Destinataire;Téléphone;Adresse;Commune;Montant`. 3. Cliquer sur « Importer les livraisons ». | Le rapport d'importation confirme « 5 livraisons importées avec succès ». Les 5 courses apparaissent instantanément dans la liste au statut `CREATED`. | [ ] OK [ ] KO [ ] NA |
+| 13.3 | P2 | Génération du bordereau officiel PDF avec QR | 1. Ouvrir la fiche de la commande `CMD-REC-001`. 2. Cliquer sur le bouton « Télécharger le bordereau PDF ». | Le fichier PDF est généré et téléchargé. Il contient les informations du destinataire, le montant à encaisser (18 500 F CFA), les mentions légales Ofika et le QR code officiel de référence scellé. | [ ] OK [ ] KO [ ] NA |
+
+| Nom du Testeur | Date | Commentaires & Remarques |
+| :--- | :--- | :--- |
+| | | |
+| **Décision finale :** | [ ] **Conforme** | [ ] **Non Conforme** |
+
+## Module 14 : Tournée Livreur, Arrivée GPS & Validation Bilatérale QR Code
+
+Pré-requis du module : commande `CMD-REC-001` affectée à Kouassi Paul (Module 13). Fenêtre mobile livreur (compte 6) et seconde fenêtre mobile client destinataire.
+
+| N° | Priorité | Intitulé du Test | Scénario pas-à-pas | Résultat attendu | Validation |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 14.1 | P1 | Prise en charge des colis au dépôt | 1. Dans la session livreur `/courier`, onglet « À prendre en charge ». 2. Cocher la commande `CMD-REC-001`. 3. Cliquer sur « Confirmer la prise en charge (1 colis) ». | Le colis bascule dans l'onglet « En tournée » au statut `PICKED_UP`. Côté entreprise (`/dashboard`), le statut passe immédiatement à « En tournée ». | [ ] OK [ ] KO [ ] NA |
+| 14.2 | P1 | Relevé de position « Arrivé chez le destinataire » | 1. Sur la carte du colis dans `/courier`, cliquer sur le bouton « Arrivé chez le destinataire ». 2. Autoriser la géolocalisation dans le navigateur. | Le bouton bascule en « Arrivé certifié GPS ». L'heure et les coordonnées GPS sont enregistrées avec précision. Le bouton « Générer le QR de remise » devient actif. | [ ] OK [ ] KO [ ] NA |
+| 14.3 | P1 | Génération du QR code 3 minutes | 1. Cliquer sur « Générer le QR de remise ». | Un QR code haute visibilité s'affiche avec un compte à rebours de 3 minutes (180 secondes) et la consigne : « Faites scanner ce QR code au client avec son téléphone ». | [ ] OK [ ] KO [ ] NA |
+| 14.4 | P1 | Scan client et affichage du code secret 4 chiffres | 1. Dans une fenêtre privée séparée (ou avec un autre téléphone simulant le client), ouvrir l'URL du QR code `/c/[token]`. | La page client s'affiche sans connexion requise. Elle récapitule l'expéditeur « Boutique Awa Recette » et affiche en grand le **Code secret de remise à 4 chiffres** (ex: `7429`) avec le message : « Dictez ce code à votre livreur pour sceller la réception ». | [ ] OK [ ] KO [ ] NA |
+| 14.5 | P1 | Validation de la livraison par le livreur | 1. Dans l'écran du livreur, saisir le code à 4 chiffres dicté par le client. 2. Cliquer sur « Valider la livraison ». | Écran vert de confirmation immédiate : « Livraison certifiée avec succès ! ». Le colis disparaît de la tournée active. Côté entreprise, le statut passe à `DELIVERED` avec la mention « Preuve QR Code certifiée » et le prix unitaire figé à 10 F CFA. | [ ] OK [ ] KO [ ] NA |
+| 14.6 | P1 | Règle anti-fraude : refus du même appareil | 1. Tenter d'ouvrir l'URL du QR code client `/c/[token]` dans le même navigateur / même profil que le livreur. | Le système bloque la tentative avec l'erreur `SAME_DEVICE_REJECTED` : « Impossible de valider la livraison sur le même appareil que le livreur ». Une alerte de sécurité `SUSPICIOUS_DEVICE_REUSE` est émise côté tableau de bord. | [ ] OK [ ] KO [ ] NA |
+
+| Nom du Testeur | Date | Commentaires & Remarques |
+| :--- | :--- | :--- |
+| | | |
+| **Décision finale :** | [ ] **Conforme** | [ ] **Non Conforme** |
+
+## Module 15 : Déclaration d'Échec, Réception Retours Dépôt & Forcer Livré
+
+Pré-requis du module : créer une nouvelle livraison `CMD-REC-002`, affectée et prise en charge par Kouassi Paul.
+
+| N° | Priorité | Intitulé du Test | Scénario pas-à-pas | Résultat attendu | Validation |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 15.1 | P1 | Déclaration d'échec de livraison sur le terrain | 1. Dans l'espace livreur `/courier`, ouvrir la course `CMD-REC-002`. 2. Cliquer sur « Signaler un échec ». 3. Choisir le motif « Client absent / injoignable ». 4. Choisir l'issue « Retour au dépôt ». 5. Valider. | La livraison passe au statut `RETURNING` (En retour). Le numéro de téléphone du client est automatiquement masqué sur l'écran du livreur pour préserver la vie privée. | [ ] OK [ ] KO [ ] NA |
+| 15.2 | P1 | Réception physique au magasin par scan QR | 1. Connecté en tant que responsable retours (compte 3 ou 4), aller sur `/dashboard/retours`. 2. Sélectionner « Kouassi Paul ». 3. Scanner le QR code du colis avec la caméra ou saisir la référence `CMD-REC-002`. 4. Cliquer sur « Confirmer la réception ». | La livraison passe au statut définitif `RETURN_RECEIVED`. Le livreur est libéré de sa charge pour ce colis. La tournée est soldée. | [ ] OK [ ] KO [ ] NA |
+| 15.3 | P2 | Procédure exceptionnelle « Forcer Livré » | 1. Créer une course `CMD-REC-003`, prise en charge par un livreur dont le téléphone tombe en panne de batterie. 2. En tant qu'admin entreprise, ouvrir la fiche de la course. 3. Cliquer sur « Forcer Livré ». 4. Saisir le motif obligatoire « Téléphone livreur déchargé, confirmation téléphonique du client obtenue ». 5. Confirmer. | La course passe au statut `DELIVERED` avec la mention visible « Livré (manuel / forcé) ». Le motif et l'identité de l'administrateur sont inscrits dans la chaîne d'audit infalsifiable. | [ ] OK [ ] KO [ ] NA |
+
+| Nom du Testeur | Date | Commentaires & Remarques |
+| :--- | :--- | :--- |
+| | | |
+| **Décision finale :** | [ ] **Conforme** | [ ] **Non Conforme** |
+
+## Module 16 : Facturation 10 F CFA & Pilotage Super Admin
+
+Pré-requis du module : livraisons exécutées aux modules 14 et 15. Compte 1 (Super Admin) et compte 2 (Admin entreprise).
+
+| N° | Priorité | Intitulé du Test | Scénario pas-à-pas | Résultat attendu | Validation |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 16.1 | P1 | Compteur facturable côté entreprise | 1. Connecté avec Awa Koné (compte 2), aller sur `/dashboard/facturation`. 2. Observer le récapitulatif du mois en cours. | Le compteur affiche : livraisons livrées avec succès facturées à 10 F CFA l'unité. Les colis retournés ou échoués sont comptabilisés à 0 F CFA (gratuit). | [ ] OK [ ] KO [ ] NA |
+| 16.2 | P1 | Pilotage Super Admin : modification du prix et période gratuite | 1. Dans le back-office `/admin`, ouvrir la fiche de « Boutique Awa Recette ». 2. Section Facturation : cliquer sur « Passer en période gratuite (OFF) ». 3. Modifier le prix par livraison à `8 F CFA`. | La facturation passe en statut OFF (0 F par livraison). L'historique des modifications consigne la date, l'ancien et le nouveau tarif. Tout est scellé dans l'audit. | [ ] OK [ ] KO [ ] NA |
+| 16.3 | P2 | Relevé mensuel officiel et marquage « Payé » | 1. Dans le back-office, aller sur `/admin/facturation`. 2. Cliquer sur « Générer le relevé ». 3. Cliquer sur « Marquer comme payé ». | Le relevé mensuel passe au statut vert « Payé » avec la date et l'heure du paiement. Tout recalcul ultérieur de ce relevé est verrouillé. | [ ] OK [ ] KO [ ] NA |
+
+| Nom du Testeur | Date | Commentaires & Remarques |
+| :--- | :--- | :--- |
+| | | |
+| **Décision finale :** | [ ] **Conforme** | [ ] **Non Conforme** |
+
+## Module 17 : Clés API Développeur & Webhooks en Temps Réel
+
+Pré-requis du module : être connecté avec un compte administrateur entreprise (`/dashboard`).
+
+| N° | Priorité | Intitulé du Test | Scénario pas-à-pas | Résultat attendu | Validation |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 17.1 | P2 | Générer des clés API Test et Production | 1. Sur `/dashboard`, cliquer sur « Clés API ». 2. Cliquer sur « Créer une clé API ». 3. Choisir l'environnement « Test » puis créer. 4. Copier la clé générée. | La clé commençant par `ofk_test_` s'affiche en clair une seule fois avec un bouton Copier. Après rechargement, seul le préfixe masqué reste visible. | [ ] OK [ ] KO [ ] NA |
+| 17.2 | P2 | Configuration d'un webhook et envoi d'un événement test | 1. Aller sur `/dashboard/webhooks`. 2. Cliquer sur « Ajouter un endpoint ». 3. Saisir l'URL `https://webhook.site/test` et sélectionner les événements de livraison. 4. Cliquer sur « Envoyer un webhook de test ». | Le secret `whsec_…` est généré. Le test envoie immédiatement une charge utile signée HMAC-SHA256 avec affichage du code HTTP retourné et de la latence en millisecondes. | [ ] OK [ ] KO [ ] NA |
+
+| Nom du Testeur | Date | Commentaires & Remarques |
+| :--- | :--- | :--- |
+| | | |
+| **Décision finale :** | [ ] **Conforme** | [ ] **Non Conforme** |
+
+## Matrice de couverture globale (17 Modules)
+
+| Module | Tests | dont P1 | Périmètre fonctionnel couvert |
 | :--- | :--- | :--- | :--- |
-| Module 1 : Connexion au back-office plateforme | 6 | 3 | Accès protégé, erreurs, connexion, déconnexion |
-| Module 2 : Création d'une entreprise cliente | 8 | 4 | Formulaire, validations, lien d'activation, doublon d'e-mail, saisie de code |
-| Module 3 : Activation du compte de l'admin entreprise | 6 | 3 | Page du lien, mot de passe, usage unique, lien invalide |
-| Module 4 : Connexion à l'espace entreprise | 6 | 2 | Connexion, erreurs, compte non activé, blocage, déconnexion |
-| Module 5 : Gestion de l'équipe et rôles multiples | 9 | 3 | Invitation, rôles cumulés, modification, dernier admin, désactivation |
-| Module 6 : Droits par rôle et cloisonnement entre entreprises | 6 | 4 | Matrice des droits, isolation A / B, séparation back-office / espace |
-| Module 7 : Consultations du support visibles par l'entreprise | 4 | 1 | Journalisation, anti-doublon, visibilité par rôle et par entreprise |
-| Module 8 : Parcours de bout en bout | 3 | 3 | Création à connexion, lien remplacé, équipe complète |
-| Module 9 : Affichage mobile et utilisation au clavier | 4 | 0 | Téléphone 375 px, clavier, couleurs |
+| Module 1 : Connexion au back-office plateforme | 6 | 3 | Accès protégé, sécurité mots de passe, sessions, déconnexion |
+| Module 2 : Création d'une entreprise cliente (Admin) | 8 | 4 | Formulaire back-office, validation, lien d'activation, unicité |
+| Module 3 : Activation du compte admin entreprise | 6 | 3 | Page de lien à usage unique, définition mot de passe |
+| Module 4 : Connexion à l'espace entreprise | 6 | 2 | Authentification entreprise, erreurs, verrouillage 5 essais |
+| Module 5 : Gestion de l'équipe et rôles multiples | 9 | 3 | Rôles cumulés, modifications, désactivation et réactivation |
+| Module 6 : Droits par rôle et cloisonnement multi-tenant | 6 | 4 | Isolation stricte des données entre boutiques A et B |
+| Module 7 : Consultations du support visibles par l'entreprise | 4 | 1 | Traçabilité et transparence des accès super-admin |
+| Module 8 : Parcours de bout en bout (Back-office) | 3 | 3 | Création, remplacement de lien, activation complète |
+| Module 9 : Affichage mobile et utilisation au clavier | 4 | 0 | Responsive mobile 375 px, navigation clavier Tab/Entrée |
+| **Module 10 : Landing Page Vitrine & Navigation SEO** | **5** | **3** | **Hero, 3 étapes, tarifs sans bord noir, FAQ, URL anglaises** |
+| **Module 11 : Auto-inscription Entreprise Directe** | **4** | **3** | **Self-service `/register`, validations, rôle admin direct** |
+| **Module 12 : Gestion des Livreurs & Premier Accès PIN** | **5** | **4** | **Création coursiers, code 48h, PIN 6 chiffres, PWA `/courier`** |
+| **Module 13 : Livraisons, Import CSV & Bordereau PDF** | **3** | **2** | **Création unitaire, import 10 lignes, PDF officiel avec QR** |
+| **Module 14 : Tournée Livreur, GPS & QR Code 3 min** | **6** | **5** | **Prise en charge lot, GPS certifié, code 4 chiffres, anti-triche** |
+| **Module 15 : Échecs, Retours Dépôt & Forcer Livré** | **3** | **2** | **Déclaration échec, masquage téléphone, scan retour, décharge** |
+| **Module 16 : Facturation 10 F CFA & Pilotage Super Admin** | **3** | **2** | **Compteur facturable, gratuité retours, ON/OFF, relevé payé** |
+| **Module 17 : Clés API Développeur & Webhooks** | **2** | **0** | **Clés test/live, webhooks HMAC, test d'envoi en direct** |
+| **TOTAL GÉNÉRAL** | **79 tests** | **44 tests P1** | **Couverture intégrale du MVP Ofika Delivery de bout en bout** |
 
-## Annexe : Écarts et recommandations sectorielles
+## Annexe : Recommandations pour la mise en production
 
-- Mot de passe oublié : absent. Un SaaS B2B l'attend pour éviter que chaque oubli passe par le support ; sans lui, l'admin plateforme ou l'admin entreprise doit régénérer un accès. La table des liens prévoit déjà l'usage « réinitialisation ».
-- Suspension d'une entreprise : la règle existe dans le code (connexion refusée, sessions coupées) mais aucun écran ne permet de suspendre. Sans écran, un client qui ne paie pas ou qui fraude ne peut pas être coupé sans intervention technique.
-- Envoi automatique des liens : les liens d'activation sont copiés ou partagés par WhatsApp à la main. Risque d'erreur de destinataire ; un envoi par e-mail ou SMS depuis la plateforme est à prévoir.
-- Journal d'audit complet : seules les consultations du support sont visibles par l'entreprise. Le secteur de la livraison avec preuve attend un historique consultable par livraison (prévu avec les livraisons).
-- Données personnelles (Côte d'Ivoire, loi n° 2013-450, ARTCI) : pas encore de mentions d'information ni de procédure d'accès ou de suppression des données des utilisateurs. À prévoir avant la mise en service, avec la déclaration auprès de l'ARTCI.
-- Blocage des essais de connexion conservé en mémoire : il disparaît au redémarrage du serveur. À rendre durable avant la production.
-- Environnement : pas d'URL de staging. Les testeurs dépendent du poste du responsable ; prévoir un staging accessible pour la recette des phases suivantes.
+- **Environnement de Staging** : Prévoir un déploiement sur une URL de recette (ex: `https://staging.ofika.ci`) connectée à une branche dédiée de base de données Neon pour exécuter ce cahier avec les livreurs et commerçants pilotes.
+- **Réseau & Données Mobiles** : Vérifier la réactivité de l'espace livreur sur les réseaux 3G/4G locaux (Orange, MTN, Moov) lors des tournées à Abidjan.
+- **Déclaration ARTCI & Mentions Légales** : Formaliser la politique de confidentialité relative aux données de géolocalisation et numéros de téléphone conformément à la loi ivoirienne n° 2013-450.

@@ -1,15 +1,24 @@
 "use server";
 
+import { refresh } from "next/cache";
 import { db } from "@/db";
 import { activationUrl } from "@/lib/app-url";
 import { requireAdmin } from "@/lib/auth/admin-session";
 import { assertCan, platformAdminActor } from "@/lib/auth/permissions";
+import {
+  BillingError,
+  generateMonthlyStatement,
+  markMonthlyStatementPaid,
+  setCompanyDeliveryPrice,
+  toggleCompanyBilling,
+} from "@/lib/billing/billing";
 import {
   createCompanyWithAdmin,
   regenerateActivationLink,
   type CreateCompanyInput,
   type FieldErrors,
 } from "@/lib/companies/create-company";
+import { getRequestMeta } from "@/lib/request-meta";
 
 export type ActivationLink = { url: string; expiresAt: string; adminName: string; adminPhone: string | null };
 
@@ -56,4 +65,102 @@ export async function regenerateLinkAction(_prev: RegenerateState, formData: For
   const result = await regenerateActivationLink(db, String(formData.get("userId") ?? ""), admin.id);
   if (!result.ok) return { status: "error", message: result.error };
   return { status: "done", url: activationUrl(result.token), expiresAt: result.expiresAt.toISOString() };
+}
+
+export type BillingMutationState =
+  | { status: "idle" }
+  | { status: "error"; message: string }
+  | { status: "done"; message: string };
+
+export async function toggleBillingAction(
+  _prev: BillingMutationState,
+  formData: FormData,
+): Promise<BillingMutationState> {
+  const admin = await requireAdmin();
+  const companyId = String(formData.get("companyId") ?? "");
+  const nextEnabled = String(formData.get("billingEnabled") ?? "") === "true";
+
+  try {
+    const res = await toggleCompanyBilling(db, admin, companyId, nextEnabled, await getRequestMeta());
+    refresh();
+    return {
+      status: "done",
+      message: res.billingEnabled ? "Facturation activée (ON)." : "Facturation désactivée (OFF, période gratuite).",
+    };
+  } catch (e) {
+    if (e instanceof BillingError) return { status: "error", message: e.message };
+    throw e;
+  }
+}
+
+export async function setPriceAction(
+  _prev: BillingMutationState,
+  formData: FormData,
+): Promise<BillingMutationState> {
+  const admin = await requireAdmin();
+  const companyId = String(formData.get("companyId") ?? "");
+  const pricePerDelivery = String(formData.get("pricePerDelivery") ?? "");
+
+  try {
+    const res = await setCompanyDeliveryPrice(
+      db,
+      admin,
+      companyId,
+      pricePerDelivery,
+      await getRequestMeta(),
+    );
+    refresh();
+    return {
+      status: "done",
+      message: `Tarif mis à jour : ${res.pricePerDelivery.toLocaleString("fr-FR")} F CFA / livraison.`,
+    };
+  } catch (e) {
+    if (e instanceof BillingError) return { status: "error", message: e.message };
+    throw e;
+  }
+}
+
+export async function generateStatementAction(
+  _prev: BillingMutationState,
+  formData: FormData,
+): Promise<BillingMutationState> {
+  const admin = await requireAdmin();
+  const companyId = String(formData.get("companyId") ?? "");
+  const period = String(formData.get("period") ?? "");
+  const issue = String(formData.get("issue") ?? "") === "true";
+
+  try {
+    const st = await generateMonthlyStatement(db, admin, companyId, period, {
+      issue,
+      meta: await getRequestMeta(),
+    });
+    refresh();
+    return {
+      status: "done",
+      message: `Relevé ${st.period.slice(0, 7)} enregistré (${st.totalAmount.toLocaleString("fr-FR")} F CFA).`,
+    };
+  } catch (e) {
+    if (e instanceof BillingError) return { status: "error", message: e.message };
+    throw e;
+  }
+}
+
+export async function markStatementPaidAction(
+  _prev: BillingMutationState,
+  formData: FormData,
+): Promise<BillingMutationState> {
+  const admin = await requireAdmin();
+  const statementId = String(formData.get("statementId") ?? "");
+
+  try {
+    const res = await markMonthlyStatementPaid(db, admin, statementId, await getRequestMeta());
+    refresh();
+    return {
+      status: "done",
+      message: `Relevé ${res.statement.period.slice(0, 7)} marqué comme payé.`,
+    };
+  } catch (e) {
+    if (e instanceof BillingError) return { status: "error", message: e.message };
+    throw e;
+  }
 }
