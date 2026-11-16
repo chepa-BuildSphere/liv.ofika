@@ -2,17 +2,23 @@
 import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db, pool } from "@/db";
-import { auditEvents, deliveries } from "@/db/schema";
+import { auditEvents, companies, deliveries, userRoles, users } from "@/db/schema";
 import { verifyAuditChain, type Executor } from "@/lib/audit";
-import { activateAccount } from "@/lib/auth/activation";
-import { loginCompanyUser, type CompanyUserIdentity } from "@/lib/auth/company-user";
-import { createPlatformAdmin } from "@/lib/auth/platform-admin";
-import { createCompanyWithAdmin } from "@/lib/companies/create-company";
-import { addCourier } from "@/lib/couriers/couriers";
-import { inviteUser } from "@/lib/team/team";
+import type { CompanyUserIdentity, UserRole } from "@/lib/auth/company-user";
+import { getCourierBySession, loginCourier, type CourierIdentity } from "@/lib/auth/courier";
+import { addCourier, detachCourier } from "@/lib/couriers/couriers";
+import { completeFirstAccess, issueAccessCode } from "@/lib/couriers/first-access";
 import { tenantScope } from "@/lib/tenant/scope";
 import { importDeliveriesFromCsv } from "./csv-import";
-import { cancelDelivery, createDelivery, DeliveryError, listDeliveries, updateDelivery } from "./deliveries";
+import {
+  assignCourier,
+  cancelDelivery,
+  createDelivery,
+  DeliveryError,
+  listCourierDeliveries,
+  listDeliveries,
+  updateDelivery,
+} from "./deliveries";
 import { changeDeliveryStatus } from "./status";
 
 class Rollback extends Error {}
@@ -28,30 +34,50 @@ async function inRolledBackTx(fn: (tx: Executor) => Promise<void>) {
 }
 
 const uid = () => crypto.randomUUID();
-const PASSWORD = "mot-de-passe-livraisons";
 
-async function companyAdmin(tx: Executor, paId: string, name: string): Promise<CompanyUserIdentity> {
-  const email = `a.${uid()}@ex.ci`;
-  const c = await createCompanyWithAdmin(tx, { companyName: name, adminName: `Admin ${name}`, adminEmail: email }, paId);
-  if (!c.ok) throw new Error("création");
-  await activateAccount(tx, c.activationToken, PASSWORD, PASSWORD);
-  const r = await loginCompanyUser(tx, email, PASSWORD);
-  if (!r.ok) throw new Error("login");
-  return r.user;
-}
-
-async function member(tx: Executor, admin: CompanyUserIdentity, roles: string[]) {
+async function member(tx: Executor, admin: CompanyUserIdentity, roles: UserRole[]): Promise<CompanyUserIdentity> {
   const email = `m.${uid()}@ex.ci`;
-  const inv = await inviteUser(tx, admin, { name: "Membre", email, roles });
-  await activateAccount(tx, inv.token, PASSWORD, PASSWORD);
-  const r = await loginCompanyUser(tx, email, PASSWORD);
-  if (!r.ok) throw new Error("login");
-  return r.user;
+  const [user] = await tenantScope(tx, admin.companyId).insert(users, {
+    name: "Membre",
+    email,
+    activatedAt: new Date(),
+    isActive: true,
+  });
+  await tx.insert(userRoles).values(roles.map((role) => ({ userId: user.id, role })));
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    companyId: admin.companyId,
+    companyName: admin.companyName,
+    roles,
+  };
 }
 
-async function twoCompanies(tx: Executor) {
-  const pa = await createPlatformAdmin(tx, { email: `pa.${uid()}@ofika.test`, name: "PA", password: "mot-de-passe-plateforme" });
-  return { a: await companyAdmin(tx, pa.id, "Alpha"), b: await companyAdmin(tx, pa.id, "Beta") };
+async function twoCompanies(tx: Executor): Promise<{ a: CompanyUserIdentity; b: CompanyUserIdentity }> {
+  const [cA, cB] = await tx
+    .insert(companies)
+    .values([
+      { name: "Alpha", slug: `alpha-${uid()}` },
+      { name: "Beta", slug: `beta-${uid()}` },
+    ])
+    .returning();
+  const now = new Date();
+  const [uA, uB] = await tx
+    .insert(users)
+    .values([
+      { companyId: cA.id, name: "Admin Alpha", email: `a.${uid()}@ex.ci`, activatedAt: now, isActive: true },
+      { companyId: cB.id, name: "Admin Beta", email: `b.${uid()}@ex.ci`, activatedAt: now, isActive: true },
+    ])
+    .returning();
+  await tx.insert(userRoles).values([
+    { userId: uA.id, role: "COMPANY_ADMIN" },
+    { userId: uB.id, role: "COMPANY_ADMIN" },
+  ]);
+  return {
+    a: { id: uA.id, name: uA.name, email: uA.email, companyId: cA.id, companyName: cA.name, roles: ["COMPANY_ADMIN"] },
+    b: { id: uB.id, name: uB.name, email: uB.email, companyId: cB.id, companyName: cB.name, roles: ["COMPANY_ADMIN"] },
+  };
 }
 
 async function expectDeliveryError(p: Promise<unknown>, code: DeliveryError["code"]) {
@@ -594,6 +620,133 @@ describe("livraisons manuelles (base réelle)", () => {
         "AFTER_PICKUP",
       );
       await expectDeliveryError(cancelDelivery(tx, a, cancelled.id), "AFTER_PICKUP");
+    });
+  });
+
+  it("affectation, réaffectation, désaffectation et visibilité immédiate côté livreur", async () => {
+    await inRolledBackTx(async (tx) => {
+      const { a } = await twoCompanies(tx);
+
+      const c1 = await addCourier(tx, a, { name: "Kwamé", phone: "0700000301", employmentType: "EMPLOYEE" });
+      const c2 = await addCourier(tx, a, { name: "Kono", phone: "0700000302", employmentType: "INDEPENDENT" });
+      const courier1: CourierIdentity = {
+        id: c1.courierId,
+        name: c1.name,
+        phone: c1.phone,
+        deviceFingerprint: null,
+        companies: [{ id: a.companyId, name: a.companyName }],
+      };
+      const courier2: CourierIdentity = {
+        id: c2.courierId,
+        name: c2.name,
+        phone: c2.phone,
+        deviceFingerprint: null,
+        companies: [{ id: a.companyId, name: a.companyName }],
+      };
+
+      const d = await createDelivery(tx, a, {
+        reference: "CMD-AFF-1",
+        recipientName: "Awa",
+        recipientPhone: "0705050505",
+        address: "Cocody Riviera",
+      });
+
+      // Affectation à Kwamé
+      const assigned1 = await assignCourier(tx, a, d.id, c1.courierId, { ip: "203.0.113.10", userAgent: "vitest" });
+      expect(assigned1.status).toBe("ASSIGNED");
+      expect(assigned1.courierId).toBe(c1.courierId);
+      expect(assigned1.assignedAt).toBeInstanceOf(Date);
+      expect((await listCourierDeliveries(tx, courier1)).map((x) => x.reference)).toEqual(["CMD-AFF-1"]);
+      expect(await listCourierDeliveries(tx, courier2)).toEqual([]);
+
+      // Réaffectation à Kono
+      const assigned2 = await assignCourier(tx, a, d.id, c2.courierId);
+      expect(assigned2.status).toBe("ASSIGNED");
+      expect(assigned2.courierId).toBe(c2.courierId);
+      expect(await listCourierDeliveries(tx, courier1)).toEqual([]);
+      expect((await listCourierDeliveries(tx, courier2)).map((x) => x.reference)).toEqual(["CMD-AFF-1"]);
+
+      const assignEvents = await tx
+        .select()
+        .from(auditEvents)
+        .where(and(eq(auditEvents.deliveryId, d.id), eq(auditEvents.eventType, "DELIVERY_ASSIGNED")))
+        .orderBy(auditEvents.id);
+      expect(assignEvents).toHaveLength(2);
+      expect(assignEvents[1].payload).toMatchObject({ courierId: c2.courierId, previousCourierId: c1.courierId });
+
+      // Désaffectation -> repasse à CREATED et disparaît chez Kono
+      const unassigned = await assignCourier(tx, a, d.id, null);
+      expect(unassigned.status).toBe("CREATED");
+      expect(unassigned.courierId).toBeNull();
+      expect(await listCourierDeliveries(tx, courier2)).toEqual([]);
+
+      expect((await verifyAuditChain(tx)).ok).toBe(true);
+    });
+  });
+
+  it("refuse affectation invalide, après PICKED_UP ou sans droits", async () => {
+    await inRolledBackTx(async (tx) => {
+      const { a, b } = await twoCompanies(tx);
+      const returnsOfficer: CompanyUserIdentity = { ...a, id: uid(), roles: ["RETURNS_OFFICER"] };
+
+      const cA = await addCourier(tx, a, { name: "Kwamé", phone: "0700000303", employmentType: "EMPLOYEE" });
+      const cA2 = await addCourier(tx, a, { name: "Kono", phone: "0700000304", employmentType: "EMPLOYEE" });
+      const cB = await addCourier(tx, b, { name: "Hervé", phone: "0700000305", employmentType: "EMPLOYEE" });
+
+      const d = await createDelivery(tx, a, {
+        reference: "CMD-AFF-ERR",
+        recipientName: "Client",
+        recipientPhone: "0706060606",
+        address: "Plateau",
+      });
+
+      // Droits, cloisonnement et livreur d'une autre entreprise
+      await expectDeliveryError(assignCourier(tx, returnsOfficer, d.id, cA.courierId), "FORBIDDEN");
+      await expectDeliveryError(assignCourier(tx, b, d.id, cB.courierId), "NOT_FOUND");
+      await expectDeliveryError(assignCourier(tx, a, d.id, cB.courierId), "INVALID");
+
+      // Un livreur détaché ne peut plus être affecté
+      await detachCourier(tx, a, cA.courierId);
+      await expectDeliveryError(assignCourier(tx, a, d.id, cA.courierId), "INVALID");
+
+      // Affecter à Kono puis passer à PICKED_UP -> toute réaffectation ou désaffectation est refusée
+      await assignCourier(tx, a, d.id, cA2.courierId);
+      await changeDeliveryStatus(tx, {
+        companyId: a.companyId,
+        deliveryId: d.id,
+        to: "PICKED_UP",
+        actor: { actorType: "COURIER", actorId: cA2.courierId },
+      });
+      await expectDeliveryError(assignCourier(tx, a, d.id, null), "AFTER_PICKUP");
+      await expectDeliveryError(assignCourier(tx, a, d.id, cA2.courierId), "AFTER_PICKUP");
+    });
+  });
+
+  it("si un livreur est détaché après affectation, sa session ne voit plus les colis de l'entreprise", async () => {
+    await inRolledBackTx(async (tx) => {
+      const { a } = await twoCompanies(tx);
+      const key = Buffer.alloc(32, 9);
+      const pin = "482913";
+
+      const cA = await addCourier(tx, a, { name: "Kwamé", phone: "0700000306", employmentType: "EMPLOYEE" });
+      const codeA = await issueAccessCode(tx, a, cA.courierId, key);
+      await completeFirstAccess(tx, { phone: "0700000306", code: codeA.code, pin, pinConfirmation: pin }, key);
+      const loginA = await loginCourier(tx, "0700000306", pin);
+      if (!loginA.ok) throw new Error("login cA");
+
+      const d = await createDelivery(tx, a, {
+        reference: "CMD-AFF-DET",
+        recipientName: "Client",
+        recipientPhone: "0706060607",
+        address: "Plateau",
+      });
+      await assignCourier(tx, a, d.id, cA.courierId);
+      expect((await listCourierDeliveries(tx, loginA.courier)).map((x) => x.reference)).toEqual(["CMD-AFF-DET"]);
+
+      await detachCourier(tx, a, cA.courierId);
+      const refreshedSession = await getCourierBySession(tx, loginA.token);
+      expect(refreshedSession).not.toBeNull();
+      expect(await listCourierDeliveries(tx, refreshedSession!)).toEqual([]);
     });
   });
 });

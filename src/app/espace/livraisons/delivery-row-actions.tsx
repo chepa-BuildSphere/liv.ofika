@@ -4,8 +4,10 @@ import { useActionState, useState } from "react";
 import type { DeliveryStatus } from "@/lib/deliveries/transitions";
 import { formatPhone } from "@/lib/validation";
 import {
+  assignCourierAction,
   cancelDeliveryAction,
   updateDeliveryAction,
+  type AssignCourierState,
   type CancelDeliveryState,
   type UpdateDeliveryState,
 } from "./actions";
@@ -14,6 +16,7 @@ export type DeliveryRowEditable = {
   id: string;
   reference: string;
   status: DeliveryStatus;
+  courierId: string | null;
   recipientName: string;
   recipientPhone: string;
   address: string;
@@ -23,8 +26,20 @@ export type DeliveryRowEditable = {
   comment: string | null;
 };
 
-export function DeliveryRowActions({ delivery }: { delivery: DeliveryRowEditable }) {
+export type CourierOption = { id: string; name: string };
+
+export function DeliveryRowActions({
+  delivery,
+  couriers,
+}: {
+  delivery: DeliveryRowEditable;
+  couriers: CourierOption[];
+}) {
   const [mode, setMode] = useState<"closed" | "edit" | "cancel">("closed");
+  const [assignState, assignAction, assignPending] = useActionState<AssignCourierState, FormData>(
+    assignCourierAction,
+    { status: "idle" },
+  );
   const [editState, editAction, editPending] = useActionState(async (prev: UpdateDeliveryState, fd: FormData) => {
     const result = await updateDeliveryAction(prev, fd);
     if (result.status === "saved") setMode("closed");
@@ -45,7 +60,27 @@ export function DeliveryRowActions({ delivery }: { delivery: DeliveryRowEditable
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <form key={delivery.courierId ?? "unassigned"} action={assignAction} className="flex flex-wrap items-center gap-2">
+          <input type="hidden" name="deliveryId" value={delivery.id} />
+          <select
+            name="courierId"
+            aria-label={`Livreur pour ${delivery.reference}`}
+            defaultValue={delivery.courierId ?? ""}
+            className="input h-9 text-sm"
+          >
+            <option value="">Non affectée</option>
+            {couriers.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <button type="submit" disabled={assignPending} className="btn-secondary">
+            {assignPending ? "Affectation…" : delivery.courierId ? "Réaffecter" : "Affecter"}
+          </button>
+        </form>
+
         <button
           type="button"
           className="btn-secondary"
@@ -61,6 +96,12 @@ export function DeliveryRowActions({ delivery }: { delivery: DeliveryRowEditable
           Annuler
         </button>
       </div>
+
+      {assignState.status === "error" && (
+        <p role="alert" className="alert-error">
+          {assignState.message}
+        </p>
+      )}
 
       {mode === "edit" && (
         <form action={editAction} className="card flex flex-col gap-3 bg-surface p-4">

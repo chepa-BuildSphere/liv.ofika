@@ -6,26 +6,19 @@ import { can, userActor } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/user-session";
 import { listCouriers } from "@/lib/couriers/couriers";
 import { CSV_TEMPLATE } from "@/lib/deliveries/csv-import";
-import { listDeliveries, normalizeDeliveryFilters } from "@/lib/deliveries/deliveries";
-import { DELIVERY_STATUSES, type DeliveryStatus } from "@/lib/deliveries/transitions";
+import {
+  DELIVERY_STATUS_LABEL,
+  deliveryStatusLabel,
+  listDeliveries,
+  normalizeDeliveryFilters,
+} from "@/lib/deliveries/deliveries";
+import { DELIVERY_STATUSES } from "@/lib/deliveries/transitions";
 import { formatPhone } from "@/lib/validation";
 import { CreateDeliveryForm } from "./create-delivery-form";
 import { DeliveryRowActions } from "./delivery-row-actions";
 import { ImportDeliveriesForm } from "./import-deliveries-form";
 
 export const metadata: Metadata = { title: "Livraisons — Ofika Delivery" };
-
-const STATUS_LABEL: Record<DeliveryStatus, string> = {
-  CREATED: "Créée",
-  ASSIGNED: "Affectée",
-  PICKED_UP: "Prise en charge",
-  ARRIVED: "Arrivé",
-  DELIVERED: "Livré",
-  DELIVERY_FAILED: "Échec",
-  RETURNING: "Retour en cours",
-  RETURN_RECEIVED: "Retour réceptionné",
-  CANCELLED: "Annulée",
-};
 
 type SearchParams = Promise<{
   status?: string;
@@ -61,12 +54,13 @@ async function Deliveries({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
   const filters = normalizeDeliveryFilters(params);
   const [list, couriersList] = await Promise.all([listDeliveries(db, user, params), listCouriers(db, user)]);
+  const attachedCouriers = couriersList.filter((c) => c.attached).map((c) => ({ id: c.id, name: c.name }));
   const hasFilters = !!(filters.status || filters.courierId || filters.date || filters.reference);
 
   return (
     <>
       <p className="mt-2 text-sm text-ink-muted">
-        Créez vos livraisons à la main ou importez un fichier CSV, puis filtrez par statut, livreur ou date.
+        Créez vos livraisons à la main ou importez un fichier CSV, affectez un livreur et filtrez la liste.
       </p>
       <div className="mt-6 flex flex-wrap items-start gap-3">
         <CreateDeliveryForm />
@@ -85,7 +79,7 @@ async function Deliveries({ searchParams }: { searchParams: SearchParams }) {
             <option value="">Tous les statuts</option>
             {DELIVERY_STATUSES.map((s) => (
               <option key={s} value={s}>
-                {STATUS_LABEL[s]}
+                {DELIVERY_STATUS_LABEL[s]}
               </option>
             ))}
           </select>
@@ -140,10 +134,7 @@ async function Deliveries({ searchParams }: { searchParams: SearchParams }) {
       ) : (
         <ul className="card mt-6 divide-y divide-line" aria-label="Livraisons de l'entreprise">
           {list.map((d) => {
-            const label =
-              d.status === "DELIVERED" && d.proofMethod === "MANUAL"
-                ? "Livré (forcé)"
-                : STATUS_LABEL[d.status];
+            const label = deliveryStatusLabel(d.status, d.proofMethod);
             return (
               <li key={d.id} className="flex flex-col gap-3 px-4 py-3 text-sm">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -174,10 +165,12 @@ async function Deliveries({ searchParams }: { searchParams: SearchParams }) {
                   </div>
                 </div>
                 <DeliveryRowActions
+                  couriers={attachedCouriers}
                   delivery={{
                     id: d.id,
                     reference: d.reference,
                     status: d.status,
+                    courierId: d.courierId,
                     recipientName: d.recipientName,
                     recipientPhone: d.recipientPhone,
                     address: d.address,

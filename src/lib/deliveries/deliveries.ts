@@ -1,12 +1,30 @@
-import { desc, eq, gte, ilike, isNull, lt, ne, type SQL } from "drizzle-orm";
-import { couriers, deliveries } from "@/db/schema";
+import { and, desc, eq, gte, ilike, inArray, isNull, lt, ne, type SQL } from "drizzle-orm";
+import { companyCouriers, couriers, deliveries } from "@/db/schema";
 import { logEvent, type Executor } from "@/lib/audit";
 import type { CompanyUserIdentity } from "@/lib/auth/company-user";
-import { can, userActor } from "@/lib/auth/permissions";
+import type { CourierIdentity } from "@/lib/auth/courier";
+import { can, courierActor, userActor } from "@/lib/auth/permissions";
 import { tenantScope } from "@/lib/tenant/scope";
 import { normalizePhone, PHONE_HINT } from "@/lib/validation";
 import { changeDeliveryStatus, TransitionRefused } from "./status";
-import { DELIVERY_STATUSES, type DeliveryStatus } from "./transitions";
+import { DELIVERY_STATUSES, type DeliveryStatus, type ProofMethod } from "./transitions";
+
+export const DELIVERY_STATUS_LABEL: Record<DeliveryStatus, string> = {
+  CREATED: "Créée",
+  ASSIGNED: "Affectée",
+  PICKED_UP: "Prise en charge",
+  ARRIVED: "Arrivé",
+  DELIVERED: "Livré",
+  DELIVERY_FAILED: "Échec",
+  RETURNING: "Retour en cours",
+  RETURN_RECEIVED: "Retour réceptionné",
+  CANCELLED: "Annulée",
+};
+
+export function deliveryStatusLabel(status: DeliveryStatus, proofMethod?: ProofMethod | null): string {
+  if (status === "DELIVERED" && proofMethod === "MANUAL") return "Livré (forcé)";
+  return DELIVERY_STATUS_LABEL[status];
+}
 
 export type DeliveryErrorCode = "FORBIDDEN" | "INVALID" | "DUPLICATE_REFERENCE" | "NOT_FOUND" | "AFTER_PICKUP";
 
@@ -20,7 +38,8 @@ export type DeliveryField =
   | "amountToCollect"
   | "comment"
   | "metadata"
-  | "proofMode";
+  | "proofMode"
+  | "courierId";
 
 export class DeliveryError extends Error {
   constructor(
@@ -479,4 +498,141 @@ export async function cancelDelivery(
       throw e;
     }
   });
+}
+
+export async function assignCourier(
+  db: Executor,
+  actor: CompanyUserIdentity,
+  deliveryId: string,
+  courierId: string | null,
+  meta: { ip?: string | null; userAgent?: string | null } = {},
+) {
+  if (!UUID_RE.test(deliveryId)) {
+    throw new DeliveryError("NOT_FOUND", "Livraison introuvable.");
+  }
+
+  const targetCourierId = courierId?.trim() || null;
+  if (targetCourierId !== null && !UUID_RE.test(targetCourierId)) {
+    throw new DeliveryError("INVALID", "Livreur introuvable.", {
+      courierId: "Choisissez un livreur rattaché à votre entreprise.",
+    });
+  }
+
+  return db.transaction(async (tx) => {
+    const [current] = await tenantScope(tx, actor.companyId).selectAll(deliveries, eq(deliveries.id, deliveryId));
+    if (!current) {
+      throw new DeliveryError("NOT_FOUND", "Livraison introuvable.");
+    }
+
+    const decision = can(userActor(actor), "delivery.assignCourier", {
+      companyId: current.companyId,
+      status: current.status,
+      courierId: current.courierId,
+    });
+    if (!decision.allowed) {
+      if (!can(userActor(actor), "delivery.create", { companyId: actor.companyId }).allowed) {
+        throw new DeliveryError("FORBIDDEN", "Réservé à l'admin entreprise et au gestionnaire.");
+      }
+      throw new DeliveryError(
+        "AFTER_PICKUP",
+        "Impossible d'affecter ou réaffecter un livreur après la prise en charge.",
+      );
+    }
+
+    if (targetCourierId === null) {
+      if (current.status === "CREATED") return current;
+      try {
+        return await changeDeliveryStatus(tx, {
+          companyId: actor.companyId,
+          deliveryId: current.id,
+          to: "CREATED",
+          actor: { actorType: "USER", actorId: actor.id },
+          context: {
+            ip: meta.ip,
+            userAgent: meta.userAgent,
+            payload: { previousCourierId: current.courierId, unassigned: true },
+          },
+        });
+      } catch (e) {
+        if (e instanceof TransitionRefused) {
+          throw new DeliveryError(
+            "AFTER_PICKUP",
+            "Impossible d'affecter ou réaffecter un livreur après la prise en charge.",
+          );
+        }
+        throw e;
+      }
+    }
+
+    const [link] = await tenantScope(tx, actor.companyId).selectAll(
+      companyCouriers,
+      eq(companyCouriers.courierId, targetCourierId),
+      eq(companyCouriers.isActive, true),
+    );
+    const [courierRow] = link
+      ? await tx.select({ isActive: couriers.isActive }).from(couriers).where(eq(couriers.id, targetCourierId)).limit(1)
+      : [];
+
+    if (!link || !courierRow?.isActive) {
+      throw new DeliveryError("INVALID", "Ce livreur n'est pas rattaché à votre entreprise.", {
+        courierId: "Choisissez un livreur actif rattaché à votre entreprise.",
+      });
+    }
+
+    if (current.status === "ASSIGNED" && current.courierId === targetCourierId) {
+      return current;
+    }
+
+    try {
+      return await changeDeliveryStatus(tx, {
+        companyId: actor.companyId,
+        deliveryId: current.id,
+        to: "ASSIGNED",
+        courierId: targetCourierId,
+        actor: { actorType: "USER", actorId: actor.id },
+        context: { ip: meta.ip, userAgent: meta.userAgent },
+      });
+    } catch (e) {
+      if (e instanceof TransitionRefused) {
+        throw new DeliveryError(
+          "AFTER_PICKUP",
+          "Impossible d'affecter ou réaffecter un livreur après la prise en charge.",
+        );
+      }
+      throw e;
+    }
+  });
+}
+
+const COURIER_VISIBLE_STATUSES: readonly DeliveryStatus[] = [
+  "ASSIGNED",
+  "PICKED_UP",
+  "ARRIVED",
+  "DELIVERY_FAILED",
+  "RETURNING",
+];
+
+/** Colis affectés / en cours visibles par le livreur, limités aux entreprises où il est actif. */
+export async function listCourierDeliveries(db: Executor, courier: CourierIdentity) {
+  if (courier.companies.length === 0) return [];
+  const companyIds = courier.companies.map((c) => c.id);
+  const actor = courierActor(courier);
+
+  // tenant-guard: livreur — filtre sur courierId et ses entreprises actives (courier.companies)
+  const rows = await db
+    .select()
+    .from(deliveries)
+    .where(
+      and(
+        eq(deliveries.courierId, courier.id),
+        eq(deliveries.isTest, false),
+        inArray(deliveries.companyId, companyIds),
+        inArray(deliveries.status, COURIER_VISIBLE_STATUSES),
+      ),
+    )
+    .orderBy(desc(deliveries.assignedAt), desc(deliveries.createdAt));
+
+  return rows.filter((d) =>
+    can(actor, "delivery.view", { companyId: d.companyId, status: d.status, courierId: d.courierId }).allowed,
+  );
 }

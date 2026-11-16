@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { requireUser } from "@/lib/auth/user-session";
 import { importDeliveriesFromCsv, type CsvImportError } from "@/lib/deliveries/csv-import";
 import {
+  assignCourier,
   cancelDelivery,
   createDelivery,
   DeliveryError,
@@ -154,6 +155,22 @@ export async function cancelDeliveryAction(_prev: CancelDeliveryState, formData:
   const reason = String(formData.get("reason") ?? "");
   try {
     await cancelDelivery(db, actor, deliveryId, reason, await getRequestMeta());
+    refresh();
+    return { status: "done" };
+  } catch (e) {
+    if (e instanceof DeliveryError) return { status: "error", message: e.message };
+    throw e;
+  }
+}
+
+export type AssignCourierState = { status: "idle" } | { status: "error"; message: string } | { status: "done" };
+
+export async function assignCourierAction(_prev: AssignCourierState, formData: FormData): Promise<AssignCourierState> {
+  const actor = await requireUser();
+  const deliveryId = String(formData.get("deliveryId") ?? "");
+  const courierId = String(formData.get("courierId") ?? "").trim() || null;
+  try {
+    await assignCourier(db, actor, deliveryId, courierId, await getRequestMeta());
     refresh();
     return { status: "done" };
   } catch (e) {

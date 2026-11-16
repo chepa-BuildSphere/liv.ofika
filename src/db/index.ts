@@ -9,12 +9,15 @@ const globalForDb = globalThis as unknown as { ofikaPool?: Pool };
 
 export const pool =
   globalForDb.ofikaPool ??
-  new Pool({ connectionString: process.env.DATABASE_URL, max: 10 });
+  new Pool({ connectionString: process.env.DATABASE_URL, max: 10, keepAlive: true });
 
 if (process.env.NODE_ENV !== "production") globalForDb.ofikaPool = pool;
 
-// Une connexion inactive coupée par Neon ne doit pas faire planter le process.
+// Une connexion inactive ou coupée en cours de requête ne doit pas faire planter le process.
 pool.on("error", (err) => console.error("[db] erreur sur une connexion inactive", err));
+pool.on("connect", (client) => {
+  client.on("error", (err) => console.error("[db] erreur sur une connexion active", err));
+});
 
 export const db = drizzle(pool, { schema });
 export type Db = typeof db;

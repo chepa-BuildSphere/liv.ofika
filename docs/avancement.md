@@ -10,7 +10,7 @@
 | **Phase 0 — Fondations** | ✅ Terminée (0.1 → 0.7) |
 | **Phase 1 — Comptes et droits** | ✅ Terminée (1.1 → 1.7) |
 | **Phase 2 — Livreurs** | ✅ Terminée (2.1 → 2.5) |
-| Phase 3 — Livraisons (côté entreprise) | 🔄 En cours : 3.1 → 3.4 faites → prochaine **tâche 3.5** (affecter / réaffecter un livreur) |
+| Phase 3 — Livraisons (côté entreprise) | 🔄 En cours : 3.1 → 3.5 faites → prochaine **tâche 3.6** (détail d'une livraison + timeline de l'historique) |
 
 ### Détail de la phase 3
 
@@ -23,6 +23,10 @@
 | 3.3 | Liste + filtres (statut, livreur, date, référence) (`/espace/livraisons`) | 7 tests base (filtre par statut, par livreur ou `UNASSIGNED` avec `courierName`, par jour ou plage `from`/`to`, par référence, combinaison et cloisonnement) + 2 tests unitaires de normalisation des filtres |
 
 | 3.4 | Modifier / annuler avant prise en charge (`/espace/livraisons`) | 9 tests base (`updateDelivery` et `cancelDelivery` possibles en `CREATED` et `ASSIGNED` avec audit `DELIVERY_UPDATED` / `DELIVERY_CANCELLED`, doublon refusé, refus `AFTER_PICKUP` dès `PICKED_UP` / `ARRIVED` / `DELIVERED` / `CANCELLED`, cloisonnement `NOT_FOUND` et refus `RETURNS_OFFICER`) |
+
+| 3.5 | Affecter / réaffecter un livreur (`/espace/livraisons` et `/livreur`) | 12 tests base (`assignCourier` affectation `ASSIGNED`, réaffectation avec `previousCourierId`, désaffectation `CREATED`, `listCourierDeliveries` ne montre les colis qu'au livreur affecté et disparaît au détachement, refus livreur autre entreprise / détaché / `AFTER_PICKUP` / `RETURNS_OFFICER` / `NOT_FOUND`) |
+
+**Affectation & vue livreur (3.5)** : `assignCourier` et `listCourierDeliveries` dans `src/lib/deliveries/deliveries.ts`, sélecteur en ligne dans `src/app/espace/livraisons/delivery-row-actions.tsx` et affichage des colis regroupés par entreprise sur `/livreur` (`src/app/livreur/page.tsx`). Contrôle `delivery.assignCourier` (admin et gestionnaire, avant `PICKED_UP` seulement) et vérifie que le livreur est actif et rattaché à l'entreprise ; côté livreur, `listCourierDeliveries` filtre via `courierActor` et `courier.companies`. Pool `pg` (`src/db/index.ts`) renforcé (`keepAlive: true` + écoute `error` sur connexions actives).
 
 **Modification & annulation (3.4)** : `updateDelivery` et `cancelDelivery` dans `src/lib/deliveries/deliveries.ts` + actions en ligne `DeliveryRowActions` sur `/espace/livraisons` (`src/app/espace/livraisons/delivery-row-actions.tsx`). Contrôlent `delivery.editBeforePickup` / `delivery.cancelBeforePickup` (admin et gestionnaire, statuts `CREATED` et `ASSIGNED` uniquement), préservent `metadata` lorsque non fourni par le formulaire, journalisent `DELIVERY_UPDATED` (avant/après) et passent par `changeDeliveryStatus(..., "CANCELLED")`.
 
