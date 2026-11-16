@@ -10,6 +10,7 @@ import { listDeliveries, normalizeDeliveryFilters } from "@/lib/deliveries/deliv
 import { DELIVERY_STATUSES, type DeliveryStatus } from "@/lib/deliveries/transitions";
 import { formatPhone } from "@/lib/validation";
 import { CreateDeliveryForm } from "./create-delivery-form";
+import { DeliveryRowActions } from "./delivery-row-actions";
 import { ImportDeliveriesForm } from "./import-deliveries-form";
 
 export const metadata: Metadata = { title: "Livraisons — Ofika Delivery" };
@@ -144,32 +145,48 @@ async function Deliveries({ searchParams }: { searchParams: SearchParams }) {
                 ? "Livré (forcé)"
                 : STATUS_LABEL[d.status];
             return (
-              <li key={d.id} className="flex flex-col gap-2 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="font-medium">
-                    <span className="font-mono">{d.reference}</span> · {d.recipientName}{" "}
-                    <span className="tabular-nums font-normal text-ink-muted">({formatPhone(d.recipientPhone)})</span>
-                  </p>
-                  <p className="text-ink-muted">
-                    {d.address}
-                    {d.district ? ` · ${d.district}` : ""}
-                    {d.packageDescription ? ` · ${d.packageDescription}` : ""}
-                  </p>
-                  <p className="mt-0.5 text-xs text-ink-muted">
-                    {d.courierName ? `Livreur : ${d.courierName}` : "Non affectée"} ·{" "}
-                    {d.createdAt.toLocaleDateString("fr-FR", { timeZone: "Africa/Abidjan" })}
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                  {d.amountToCollect !== null && (
-                    <span className="tabular-nums text-xs text-ink-muted">
-                      {d.amountToCollect.toLocaleString("fr-FR")} F CFA
+              <li key={d.id} className="flex flex-col gap-3 px-4 py-3 text-sm">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="font-medium">
+                      <span className="font-mono">{d.reference}</span> · {d.recipientName}{" "}
+                      <span className="tabular-nums font-normal text-ink-muted">({formatPhone(d.recipientPhone)})</span>
+                    </p>
+                    <p className="text-ink-muted">
+                      {d.address}
+                      {d.district ? ` · ${d.district}` : ""}
+                      {d.packageDescription ? ` · ${d.packageDescription}` : ""}
+                    </p>
+                    <p className="mt-0.5 text-xs text-ink-muted">
+                      {d.courierName ? `Livreur : ${d.courierName}` : "Non affectée"} ·{" "}
+                      {d.createdAt.toLocaleDateString("fr-FR", { timeZone: "Africa/Abidjan" })}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                    {d.amountToCollect !== null && (
+                      <span className="tabular-nums text-xs text-ink-muted">
+                        {d.amountToCollect.toLocaleString("fr-FR")} F CFA
+                      </span>
+                    )}
+                    <span className="rounded-full border border-line bg-surface px-2.5 py-0.5 text-xs font-medium">
+                      {label}
                     </span>
-                  )}
-                  <span className="rounded-full border border-line bg-surface px-2.5 py-0.5 text-xs font-medium">
-                    {label}
-                  </span>
+                  </div>
                 </div>
+                <DeliveryRowActions
+                  delivery={{
+                    id: d.id,
+                    reference: d.reference,
+                    status: d.status,
+                    recipientName: d.recipientName,
+                    recipientPhone: d.recipientPhone,
+                    address: d.address,
+                    district: d.district,
+                    packageDescription: d.packageDescription,
+                    amountToCollect: d.amountToCollect,
+                    comment: d.comment,
+                  }}
+                />
               </li>
             );
           })}

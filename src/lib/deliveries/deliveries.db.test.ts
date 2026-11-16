@@ -1,5 +1,5 @@
 // Création manuelle et liste des livraisons sur la base `dev`, transaction annulée.
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db, pool } from "@/db";
 import { auditEvents, deliveries } from "@/db/schema";
@@ -12,7 +12,7 @@ import { addCourier } from "@/lib/couriers/couriers";
 import { inviteUser } from "@/lib/team/team";
 import { tenantScope } from "@/lib/tenant/scope";
 import { importDeliveriesFromCsv } from "./csv-import";
-import { createDelivery, DeliveryError, listDeliveries } from "./deliveries";
+import { cancelDelivery, createDelivery, DeliveryError, listDeliveries, updateDelivery } from "./deliveries";
 import { changeDeliveryStatus } from "./status";
 
 class Rollback extends Error {}
@@ -392,6 +392,208 @@ describe("livraisons manuelles (base réelle)", () => {
           (d) => d.reference,
         ),
       ).toEqual(["CMD-F2"]);
+    });
+  });
+
+  it("modification et annulation possibles avant prise en charge (CREATED et ASSIGNED) avec audit", async () => {
+    await inRolledBackTx(async (tx) => {
+      const { a } = await twoCompanies(tx);
+      const { courierId } = await addCourier(tx, a, { name: "Kwamé", phone: "0700000201", employmentType: "EMPLOYEE" });
+
+      const d1 = await createDelivery(tx, a, {
+        reference: "CMD-EDIT-1",
+        recipientName: "Awa",
+        recipientPhone: "0701010101",
+        address: "Cocody",
+        metadata: { keepMe: true },
+      });
+      const d2 = await createDelivery(tx, a, {
+        reference: "CMD-EDIT-2",
+        recipientName: "Yao",
+        recipientPhone: "0702020202",
+        address: "Plateau",
+      });
+      await changeDeliveryStatus(tx, {
+        companyId: a.companyId,
+        deliveryId: d2.id,
+        to: "ASSIGNED",
+        courierId,
+        actor: { actorType: "USER", actorId: a.id },
+      });
+
+      // Modification en CREATED (conserve la même référence et les metadata API existantes)
+      const u1 = await updateDelivery(
+        tx,
+        a,
+        d1.id,
+        {
+          reference: "CMD-EDIT-1",
+          recipientName: "Awa Koné",
+          recipientPhone: "0505050505",
+          address: "Cocody Angré",
+          amountToCollect: 20000,
+        },
+        { ip: "203.0.113.10", userAgent: "vitest" },
+      );
+      expect(u1).toMatchObject({
+        reference: "CMD-EDIT-1",
+        recipientName: "Awa Koné",
+        recipientPhone: "+2250505050505",
+        address: "Cocody Angré",
+        amountToCollect: 20000,
+        metadata: { keepMe: true },
+      });
+
+      // Doublon refusé sur la référence d'une autre livraison
+      await expectDeliveryError(
+        updateDelivery(tx, a, d1.id, {
+          reference: "CMD-EDIT-2",
+          recipientName: "Awa Koné",
+          recipientPhone: "0505050505",
+          address: "Cocody Angré",
+        }),
+        "DUPLICATE_REFERENCE",
+      );
+
+      // Modification en ASSIGNED
+      const u2 = await updateDelivery(tx, a, d2.id, {
+        reference: "CMD-EDIT-2-BIS",
+        recipientName: "Yao Kouassi",
+        recipientPhone: "0702020202",
+        address: "Plateau Rue du Commerce",
+      });
+      expect(u2).toMatchObject({ status: "ASSIGNED", reference: "CMD-EDIT-2-BIS", courierId });
+
+      const updatedEvents = await tx
+        .select()
+        .from(auditEvents)
+        .where(and(eq(auditEvents.companyId, a.companyId), eq(auditEvents.eventType, "DELIVERY_UPDATED")));
+      expect(updatedEvents).toHaveLength(2);
+
+      // Annulation possible en CREATED et en ASSIGNED
+      const c1 = await cancelDelivery(tx, a, d1.id, "Client a annulé");
+      const c2 = await cancelDelivery(tx, a, d2.id);
+      expect(c1.status).toBe("CANCELLED");
+      expect(c1.cancelledAt).toBeInstanceOf(Date);
+      expect(c2.status).toBe("CANCELLED");
+
+      const cancelEvents = await tx
+        .select()
+        .from(auditEvents)
+        .where(and(eq(auditEvents.companyId, a.companyId), eq(auditEvents.eventType, "DELIVERY_CANCELLED")));
+      expect(cancelEvents).toHaveLength(2);
+      expect(cancelEvents[0].payload).toMatchObject({ reason: "Client a annulé" });
+
+      expect((await verifyAuditChain(tx)).ok).toBe(true);
+    });
+  });
+
+  it("refuse modification et annulation après PICKED_UP (et si déjà CANCELLED), cloisonnement et droits", async () => {
+    await inRolledBackTx(async (tx) => {
+      const { a, b } = await twoCompanies(tx);
+      const returnsOfficer = await member(tx, a, ["RETURNS_OFFICER"]);
+      const { courierId } = await addCourier(tx, a, { name: "Kwamé", phone: "0700000202", employmentType: "EMPLOYEE" });
+
+      const d = await createDelivery(tx, a, {
+        reference: "CMD-PICKED",
+        recipientName: "Kono",
+        recipientPhone: "0703030303",
+        address: "Marcory",
+      });
+
+      // Droits et cloisonnement avant prise en charge
+      await expectDeliveryError(
+        updateDelivery(tx, returnsOfficer, d.id, {
+          reference: "CMD-PICKED",
+          recipientName: "Kono",
+          recipientPhone: "0703030303",
+          address: "Marcory",
+        }),
+        "FORBIDDEN",
+      );
+      await expectDeliveryError(cancelDelivery(tx, returnsOfficer, d.id), "FORBIDDEN");
+      await expectDeliveryError(cancelDelivery(tx, b, d.id), "NOT_FOUND");
+      await expectDeliveryError(
+        updateDelivery(tx, b, d.id, {
+          reference: "CMD-PICKED",
+          recipientName: "Kono",
+          recipientPhone: "0703030303",
+          address: "Marcory",
+        }),
+        "NOT_FOUND",
+      );
+
+      // Passage à ASSIGNED puis PICKED_UP
+      await changeDeliveryStatus(tx, {
+        companyId: a.companyId,
+        deliveryId: d.id,
+        to: "ASSIGNED",
+        courierId,
+        actor: { actorType: "USER", actorId: a.id },
+      });
+      await changeDeliveryStatus(tx, {
+        companyId: a.companyId,
+        deliveryId: d.id,
+        to: "PICKED_UP",
+        actor: { actorType: "COURIER", actorId: courierId },
+      });
+
+      // Modification et annulation refusées dès PICKED_UP
+      await expectDeliveryError(
+        updateDelivery(tx, a, d.id, {
+          reference: "CMD-PICKED-EDIT",
+          recipientName: "Autre",
+          recipientPhone: "0703030303",
+          address: "Autre adresse",
+        }),
+        "AFTER_PICKUP",
+      );
+      await expectDeliveryError(cancelDelivery(tx, a, d.id), "AFTER_PICKUP");
+
+      // Passage à ARRIVED puis DELIVERED -> toujours refusé
+      await changeDeliveryStatus(tx, {
+        companyId: a.companyId,
+        deliveryId: d.id,
+        to: "ARRIVED",
+        actor: { actorType: "COURIER", actorId: courierId },
+      });
+      await expectDeliveryError(cancelDelivery(tx, a, d.id), "AFTER_PICKUP");
+
+      await changeDeliveryStatus(tx, {
+        companyId: a.companyId,
+        deliveryId: d.id,
+        to: "DELIVERED",
+        proofMethod: "QR",
+        actor: { actorType: "SYSTEM", actorId: null },
+      });
+      await expectDeliveryError(
+        updateDelivery(tx, a, d.id, {
+          reference: "CMD-PICKED-EDIT",
+          recipientName: "Autre",
+          recipientPhone: "0703030303",
+          address: "Autre",
+        }),
+        "AFTER_PICKUP",
+      );
+
+      // Une livraison déjà annulée ne peut plus être modifiée ni ré-annulée
+      const cancelled = await createDelivery(tx, a, {
+        reference: "CMD-CANC",
+        recipientName: "Hervé",
+        recipientPhone: "0704040404",
+        address: "Yopougon",
+      });
+      await cancelDelivery(tx, a, cancelled.id);
+      await expectDeliveryError(
+        updateDelivery(tx, a, cancelled.id, {
+          reference: "CMD-CANC-2",
+          recipientName: "Hervé",
+          recipientPhone: "0704040404",
+          address: "Yopougon",
+        }),
+        "AFTER_PICKUP",
+      );
+      await expectDeliveryError(cancelDelivery(tx, a, cancelled.id), "AFTER_PICKUP");
     });
   });
 });

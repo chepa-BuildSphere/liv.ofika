@@ -4,7 +4,13 @@ import { refresh } from "next/cache";
 import { db } from "@/db";
 import { requireUser } from "@/lib/auth/user-session";
 import { importDeliveriesFromCsv, type CsvImportError } from "@/lib/deliveries/csv-import";
-import { createDelivery, DeliveryError, type DeliveryField } from "@/lib/deliveries/deliveries";
+import {
+  cancelDelivery,
+  createDelivery,
+  DeliveryError,
+  updateDelivery,
+  type DeliveryField,
+} from "@/lib/deliveries/deliveries";
 import { getRequestMeta } from "@/lib/request-meta";
 
 type Fields = Partial<Record<DeliveryField, string>>;
@@ -21,14 +27,8 @@ type FormValues = {
   proofMode: string;
 };
 
-export type CreateDeliveryState =
-  | { status: "idle" }
-  | { status: "error"; message?: string; fields: Fields; values: FormValues }
-  | { status: "done"; message: string; reference: string };
-
-export async function createDeliveryAction(_prev: CreateDeliveryState, formData: FormData): Promise<CreateDeliveryState> {
-  const actor = await requireUser();
-  const values: FormValues = {
+function readDeliveryFormValues(formData: FormData): FormValues {
+  return {
     reference: String(formData.get("reference") ?? ""),
     recipientName: String(formData.get("recipientName") ?? ""),
     recipientPhone: String(formData.get("recipientPhone") ?? ""),
@@ -39,6 +39,16 @@ export async function createDeliveryAction(_prev: CreateDeliveryState, formData:
     comment: String(formData.get("comment") ?? ""),
     proofMode: String(formData.get("proofMode") ?? "QR"),
   };
+}
+
+export type CreateDeliveryState =
+  | { status: "idle" }
+  | { status: "error"; message?: string; fields: Fields; values: FormValues }
+  | { status: "done"; message: string; reference: string };
+
+export async function createDeliveryAction(_prev: CreateDeliveryState, formData: FormData): Promise<CreateDeliveryState> {
+  const actor = await requireUser();
+  const values = readDeliveryFormValues(formData);
 
   try {
     const created = await createDelivery(db, actor, values, await getRequestMeta());
@@ -106,6 +116,48 @@ export async function importDeliveriesAction(
     if (e instanceof DeliveryError) {
       return { status: "error", message: e.message };
     }
+    throw e;
+  }
+}
+
+export type UpdateDeliveryState =
+  | { status: "idle" }
+  | { status: "error"; message?: string; fields: Fields; values: FormValues }
+  | { status: "saved" };
+
+export async function updateDeliveryAction(_prev: UpdateDeliveryState, formData: FormData): Promise<UpdateDeliveryState> {
+  const actor = await requireUser();
+  const deliveryId = String(formData.get("deliveryId") ?? "");
+  const values = readDeliveryFormValues(formData);
+  try {
+    await updateDelivery(db, actor, deliveryId, values, await getRequestMeta());
+    refresh();
+    return { status: "saved" };
+  } catch (e) {
+    if (e instanceof DeliveryError) {
+      return {
+        status: "error",
+        message: e.fields ? undefined : e.message,
+        fields: e.fields ?? {},
+        values,
+      };
+    }
+    throw e;
+  }
+}
+
+export type CancelDeliveryState = { status: "idle" } | { status: "error"; message: string } | { status: "done" };
+
+export async function cancelDeliveryAction(_prev: CancelDeliveryState, formData: FormData): Promise<CancelDeliveryState> {
+  const actor = await requireUser();
+  const deliveryId = String(formData.get("deliveryId") ?? "");
+  const reason = String(formData.get("reason") ?? "");
+  try {
+    await cancelDelivery(db, actor, deliveryId, reason, await getRequestMeta());
+    refresh();
+    return { status: "done" };
+  } catch (e) {
+    if (e instanceof DeliveryError) return { status: "error", message: e.message };
     throw e;
   }
 }

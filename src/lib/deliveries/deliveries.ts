@@ -1,13 +1,14 @@
-import { desc, eq, gte, ilike, isNull, lt, type SQL } from "drizzle-orm";
+import { desc, eq, gte, ilike, isNull, lt, ne, type SQL } from "drizzle-orm";
 import { couriers, deliveries } from "@/db/schema";
 import { logEvent, type Executor } from "@/lib/audit";
 import type { CompanyUserIdentity } from "@/lib/auth/company-user";
 import { can, userActor } from "@/lib/auth/permissions";
 import { tenantScope } from "@/lib/tenant/scope";
 import { normalizePhone, PHONE_HINT } from "@/lib/validation";
+import { changeDeliveryStatus, TransitionRefused } from "./status";
 import { DELIVERY_STATUSES, type DeliveryStatus } from "./transitions";
 
-export type DeliveryErrorCode = "FORBIDDEN" | "INVALID" | "DUPLICATE_REFERENCE";
+export type DeliveryErrorCode = "FORBIDDEN" | "INVALID" | "DUPLICATE_REFERENCE" | "NOT_FOUND" | "AFTER_PICKUP";
 
 export type DeliveryField =
   | "reference"
@@ -326,4 +327,156 @@ export async function listDeliveries(
     courierName: r.courierName ?? null,
     courierPhone: r.courierPhone ?? null,
   }));
+}
+
+export async function updateDelivery(
+  db: Executor,
+  actor: CompanyUserIdentity,
+  deliveryId: string,
+  input: CreateDeliveryInput,
+  meta: { ip?: string | null; userAgent?: string | null } = {},
+) {
+  if (!UUID_RE.test(deliveryId)) {
+    throw new DeliveryError("NOT_FOUND", "Livraison introuvable.");
+  }
+
+  return db.transaction(async (tx) => {
+    const [current] = await tx
+      .select()
+      .from(deliveries)
+      .where(tenantScope(tx, actor.companyId).filter(deliveries, eq(deliveries.id, deliveryId)))
+      .for("update");
+
+    if (!current) {
+      throw new DeliveryError("NOT_FOUND", "Livraison introuvable.");
+    }
+
+    const decision = can(userActor(actor), "delivery.editBeforePickup", {
+      companyId: current.companyId,
+      status: current.status,
+      courierId: current.courierId,
+    });
+    if (!decision.allowed) {
+      if (!can(userActor(actor), "delivery.create", { companyId: actor.companyId }).allowed) {
+        throw new DeliveryError("FORBIDDEN", "Réservé à l'admin entreprise et au gestionnaire.");
+      }
+      throw new DeliveryError("AFTER_PICKUP", "Impossible de modifier une livraison après sa prise en charge.");
+    }
+
+    const check = validateDeliveryInput(input);
+    if (!check.ok) {
+      throw new DeliveryError("INVALID", "Formulaire incomplet.", check.fields);
+    }
+
+    if (check.data.reference !== current.reference) {
+      const duplicates = await tenantScope(tx, actor.companyId).selectAll(
+        deliveries,
+        eq(deliveries.isTest, current.isTest),
+        eq(deliveries.reference, check.data.reference),
+        ne(deliveries.id, current.id),
+      );
+      if (duplicates.length > 0) {
+        throw new DeliveryError("DUPLICATE_REFERENCE", "Cette référence existe déjà.", {
+          reference: "Cette référence est déjà utilisée par une de vos livraisons.",
+        });
+      }
+    }
+
+    const [updated] = await tenantScope(tx, actor.companyId).update(
+      deliveries,
+      {
+        ...check.data,
+        metadata: input.metadata === undefined ? current.metadata : check.data.metadata,
+        updatedAt: new Date(),
+      },
+      eq(deliveries.id, current.id),
+    );
+
+    await logEvent(tx, {
+      companyId: current.companyId,
+      deliveryId: current.id,
+      eventType: "DELIVERY_UPDATED",
+      actorType: "USER",
+      actorId: actor.id,
+      fromStatus: current.status,
+      toStatus: current.status,
+      payload: {
+        before: {
+          reference: current.reference,
+          recipientName: current.recipientName,
+          recipientPhone: current.recipientPhone,
+          address: current.address,
+          district: current.district,
+          packageDescription: current.packageDescription,
+          amountToCollect: current.amountToCollect,
+          comment: current.comment,
+        },
+        after: {
+          reference: updated.reference,
+          recipientName: updated.recipientName,
+          recipientPhone: updated.recipientPhone,
+          address: updated.address,
+          district: updated.district,
+          packageDescription: updated.packageDescription,
+          amountToCollect: updated.amountToCollect,
+          comment: updated.comment,
+        },
+      },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    return updated;
+  });
+}
+
+export async function cancelDelivery(
+  db: Executor,
+  actor: CompanyUserIdentity,
+  deliveryId: string,
+  reason?: string | null,
+  meta: { ip?: string | null; userAgent?: string | null } = {},
+) {
+  if (!UUID_RE.test(deliveryId)) {
+    throw new DeliveryError("NOT_FOUND", "Livraison introuvable.");
+  }
+
+  return db.transaction(async (tx) => {
+    const [current] = await tenantScope(tx, actor.companyId).selectAll(deliveries, eq(deliveries.id, deliveryId));
+    if (!current) {
+      throw new DeliveryError("NOT_FOUND", "Livraison introuvable.");
+    }
+
+    const decision = can(userActor(actor), "delivery.cancelBeforePickup", {
+      companyId: current.companyId,
+      status: current.status,
+      courierId: current.courierId,
+    });
+    if (!decision.allowed) {
+      if (!can(userActor(actor), "delivery.create", { companyId: actor.companyId }).allowed) {
+        throw new DeliveryError("FORBIDDEN", "Réservé à l'admin entreprise et au gestionnaire.");
+      }
+      throw new DeliveryError("AFTER_PICKUP", "Impossible d'annuler une livraison après sa prise en charge.");
+    }
+
+    const cleanReason = reason?.trim().slice(0, 500) || undefined;
+    try {
+      return await changeDeliveryStatus(tx, {
+        companyId: actor.companyId,
+        deliveryId: current.id,
+        to: "CANCELLED",
+        actor: { actorType: "USER", actorId: actor.id },
+        context: {
+          ip: meta.ip,
+          userAgent: meta.userAgent,
+          payload: cleanReason ? { reason: cleanReason } : undefined,
+        },
+      });
+    } catch (e) {
+      if (e instanceof TransitionRefused) {
+        throw new DeliveryError("AFTER_PICKUP", "Impossible d'annuler une livraison après sa prise en charge.");
+      }
+      throw e;
+    }
+  });
 }

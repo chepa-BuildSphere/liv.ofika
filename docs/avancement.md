@@ -10,7 +10,7 @@
 | **Phase 0 — Fondations** | ✅ Terminée (0.1 → 0.7) |
 | **Phase 1 — Comptes et droits** | ✅ Terminée (1.1 → 1.7) |
 | **Phase 2 — Livreurs** | ✅ Terminée (2.1 → 2.5) |
-| Phase 3 — Livraisons (côté entreprise) | 🔄 En cours : 3.1 → 3.3 faites → prochaine **tâche 3.4** (modifier / annuler avant prise en charge) |
+| Phase 3 — Livraisons (côté entreprise) | 🔄 En cours : 3.1 → 3.4 faites → prochaine **tâche 3.5** (affecter / réaffecter un livreur) |
 
 ### Détail de la phase 3
 
@@ -21,6 +21,10 @@
 | 3.2 | Import CSV/Excel avec rapport d'erreurs ligne par ligne (`/espace/livraisons`) | 6 tests base (100 lignes valides importées `CREATED` + 4 lignes fausses signalées avec n° de ligne exact + 101 événements audit chaînés, cloisonnement et refus `RETURNS_OFFICER`) + 4 tests unitaires (`;`, `,`, `\t`, BOM, guillemets, colonnes manquantes, montants formatés, doublons internes) |
 
 | 3.3 | Liste + filtres (statut, livreur, date, référence) (`/espace/livraisons`) | 7 tests base (filtre par statut, par livreur ou `UNASSIGNED` avec `courierName`, par jour ou plage `from`/`to`, par référence, combinaison et cloisonnement) + 2 tests unitaires de normalisation des filtres |
+
+| 3.4 | Modifier / annuler avant prise en charge (`/espace/livraisons`) | 9 tests base (`updateDelivery` et `cancelDelivery` possibles en `CREATED` et `ASSIGNED` avec audit `DELIVERY_UPDATED` / `DELIVERY_CANCELLED`, doublon refusé, refus `AFTER_PICKUP` dès `PICKED_UP` / `ARRIVED` / `DELIVERED` / `CANCELLED`, cloisonnement `NOT_FOUND` et refus `RETURNS_OFFICER`) |
+
+**Modification & annulation (3.4)** : `updateDelivery` et `cancelDelivery` dans `src/lib/deliveries/deliveries.ts` + actions en ligne `DeliveryRowActions` sur `/espace/livraisons` (`src/app/espace/livraisons/delivery-row-actions.tsx`). Contrôlent `delivery.editBeforePickup` / `delivery.cancelBeforePickup` (admin et gestionnaire, statuts `CREATED` et `ASSIGNED` uniquement), préservent `metadata` lorsque non fourni par le formulaire, journalisent `DELIVERY_UPDATED` (avant/après) et passent par `changeDeliveryStatus(..., "CANCELLED")`.
 
 **Liste & filtres (3.3)** : `normalizeDeliveryFilters` et `listDeliveries` enrichi (`leftJoin` sur `couriers` pour exposer `courierName` / `courierPhone`) dans `src/lib/deliveries/deliveries.ts`, et barre de filtres GET sur `/espace/livraisons` (statut, livreur / « Non affectée », date, référence, bouton « Réinitialiser »).
 
