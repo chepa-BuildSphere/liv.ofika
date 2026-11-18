@@ -17,6 +17,7 @@ import {
   CommandLineIcon,
   ShieldCheckIcon,
   DocumentTextIcon,
+  GitHubIcon,
 } from "@/components/icons";
 
 const TIMELINE_SAMPLE = [
@@ -105,13 +106,23 @@ export default async function Home() {
       {/* ── NAVIGATION PRINCIPALE ────────────────────────────────────────── */}
       <header className="sticky top-0 z-30 border-b border-[#EAEAEA] bg-[#FBFBFA]/90 backdrop-blur-[6px]">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <Link href="/">
               <Wordmark className="text-base sm:text-lg" />
             </Link>
             <span className="hidden rounded-full border border-[#EAEAEA] bg-[#F7F6F3] px-2.5 py-0.5 font-mono text-[11px] uppercase tracking-[0.05em] text-[#787774] md:inline-block">
               Abidjan · Côte d&apos;Ivoire
             </span>
+            <a
+              href="https://github.com/chepa-BuildSphere/liv.ofika"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full border border-[#EAEAEA] bg-[#F7F6F3] px-2.5 py-0.5 font-mono text-[11px] text-[#787774] transition-colors hover:border-[#111111] hover:text-[#111111]"
+              title="Projet Open Source sur GitHub"
+            >
+              <GitHubIcon className="h-3 w-3 fill-current" />
+              <span className="hidden xs:inline">Open Source</span>
+            </a>
           </div>
 
           <nav aria-label="Navigation principale" className="flex items-center gap-2 sm:gap-4">
@@ -132,6 +143,16 @@ export default async function Home() {
               className="hidden text-xs font-medium text-[#787774] transition-colors hover:text-[#111111] md:inline"
             >
               Développeurs &amp; API
+            </a>
+            <a
+              href="https://github.com/chepa-BuildSphere/liv.ofika"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-[#787774] transition-colors hover:text-[#111111]"
+              title="Code source GitHub (Open Source)"
+            >
+              <GitHubIcon className="h-4 w-4 fill-current" />
+              <span className="hidden lg:inline">GitHub</span>
             </a>
             <Link
               href="/courier/login"
@@ -788,6 +809,16 @@ export default async function Home() {
                     <DocumentTextIcon className="h-4 w-4 text-zinc-400" />
                     <span>Guide 15 minutes</span>
                   </Link>
+                  <a
+                    href="https://github.com/chepa-BuildSphere/liv.ofika"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.05] px-5 text-xs font-semibold text-zinc-300 backdrop-blur-md transition-all hover:bg-white/10 hover:text-white hover:border-white/25 active:scale-95"
+                    title="Code source complet du projet sur GitHub"
+                  >
+                    <GitHubIcon className="h-4 w-4 fill-current text-zinc-400" />
+                    <span>GitHub (Open Source)</span>
+                  </a>
                 </div>
               </div>
             </RevealOnScroll>
@@ -972,6 +1003,15 @@ export default async function Home() {
             <Link href="/api/reference" className="hover:text-[#111111]" target="_blank">
               Documentation API (Scalar)
             </Link>
+            <a
+              href="https://github.com/chepa-BuildSphere/liv.ofika"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 hover:text-[#111111]"
+            >
+              <GitHubIcon className="h-3.5 w-3.5 fill-current" />
+              <span>GitHub (Open Source)</span>
+            </a>
             <Link href="/courier/login" className="hover:text-[#111111]">
               Espace livreur
             </Link>
