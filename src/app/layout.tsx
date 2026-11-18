@@ -18,7 +18,11 @@ export const metadata: Metadata = {
   description: "Gestion des livraisons avec preuve de livraison",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html
       lang="fr"

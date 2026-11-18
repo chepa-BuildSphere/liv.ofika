@@ -26,6 +26,8 @@ interface EspaceNavProps {
     canCouriers: boolean;
     canTeam: boolean;
     canBilling: boolean;
+    canCash?: boolean;
+    canDisputes?: boolean;
   };
   notificationBell: ReactNode;
   logoutAction: () => Promise<void>;
@@ -70,6 +72,8 @@ export function EspaceSidebarNav({
   const isCouriersActive = pathname.startsWith("/espace/livreurs");
   const isTeamActive = pathname.startsWith("/espace/equipe");
   const isBillingActive = pathname.startsWith("/espace/facturation");
+  const isCashActive = pathname.startsWith("/espace/encaissements");
+  const isDisputesActive = pathname.startsWith("/espace/litiges");
   const isApiActive = pathname.startsWith("/espace/cles-api") || pathname.startsWith("/espace/webhooks");
   const isSettingsActive = pathname.startsWith("/espace/parametres");
   const isDocsActive = pathname.startsWith("/espace/documentation");
@@ -215,6 +219,32 @@ export function EspaceSidebarNav({
                   >
                     <ReceiptIcon className="h-4 w-4" />
                     <span>Facturation (10 F)</span>
+                  </Link>
+                )}
+
+                {permissions.canCash && (
+                  <Link
+                    href="/espace/encaissements"
+                    onClick={() => setMobileOpen(false)}
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-semibold ${
+                      isCashActive ? "bg-[#111111] text-white" : "text-[#555] hover:bg-[#F7F6F3]"
+                    }`}
+                  >
+                    <ReceiptIcon className="h-4 w-4" />
+                    <span>Encaissements (COD)</span>
+                  </Link>
+                )}
+
+                {permissions.canDisputes && (
+                  <Link
+                    href="/espace/litiges"
+                    onClick={() => setMobileOpen(false)}
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-semibold ${
+                      isDisputesActive ? "bg-[#111111] text-white" : "text-[#555] hover:bg-[#F7F6F3]"
+                    }`}
+                  >
+                    <AlertTriangleIcon className="h-4 w-4" />
+                    <span>Litiges &amp; Contentieux</span>
                   </Link>
                 )}
 
@@ -417,6 +447,40 @@ export function EspaceSidebarNav({
                     <span>Facturation (10 F)</span>
                   </div>
                   {isBillingActive && <span className="h-1.5 w-1.5 rounded-full bg-[#C2410C]" />}
+                </Link>
+              )}
+
+              {permissions.canCash && (
+                <Link
+                  href="/espace/encaissements"
+                  className={`flex items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold transition-all ${
+                    isCashActive
+                      ? "bg-[#111111] text-white shadow-xs"
+                      : "text-[#555] hover:bg-[#F7F6F3] hover:text-[#111111]"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <ReceiptIcon className="h-4 w-4" />
+                    <span>Encaissements (COD)</span>
+                  </div>
+                  {isCashActive && <span className="h-1.5 w-1.5 rounded-full bg-[#C2410C]" />}
+                </Link>
+              )}
+
+              {permissions.canDisputes && (
+                <Link
+                  href="/espace/litiges"
+                  className={`flex items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold transition-all ${
+                    isDisputesActive
+                      ? "bg-[#111111] text-white shadow-xs"
+                      : "text-[#555] hover:bg-[#F7F6F3] hover:text-[#111111]"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <AlertTriangleIcon className="h-4 w-4" />
+                    <span>Litiges &amp; Contentieux</span>
+                  </div>
+                  {isDisputesActive && <span className="h-1.5 w-1.5 rounded-full bg-[#C2410C]" />}
                 </Link>
               )}
 

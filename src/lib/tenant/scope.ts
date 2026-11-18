@@ -4,8 +4,11 @@ import {
   apiKeys,
   auditEvents,
   billingSettingChanges,
+  cashHandovers,
   companyCouriers,
   deliveries,
+  deliveryComments,
+  disputes,
   idempotencyKeys,
   monthlyStatements,
   securityAlerts,
@@ -41,6 +44,9 @@ export const TENANT_TABLES = {
   apiKeys,
   idempotencyKeys,
   webhookEndpoints,
+  cashHandovers,
+  deliveryComments,
+  disputes,
 } as const;
 
 export type TenantTable = (typeof TENANT_TABLES)[keyof typeof TENANT_TABLES];

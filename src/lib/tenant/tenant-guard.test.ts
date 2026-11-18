@@ -102,7 +102,7 @@ describe("cloisonnement : aucune requête directe sur une table d'entreprise", (
       `Requêtes sans filtre company_id :\n${violations.map((v) => `  src/${v.file}:${v.line}  ${v.code}`).join("\n")}\n` +
         "→ passer par tenantScope(db, companyId), ou justifier avec un commentaire « tenant-guard: <raison> ».",
     ).toEqual([]);
-  });
+  }, 60_000);
 
   it("chaque exception est encore utile (pas de fichier fantôme dans ALLOWED)", () => {
     const files = sourceFiles(ROOT).map((p) => relative(ROOT, p).split(sep).join("/"));

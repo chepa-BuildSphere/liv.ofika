@@ -16,6 +16,7 @@ import {
   attemptOutcomeEnum,
   deliveryStatusEnum,
   failureReasonEnum,
+  paymentMethodEnum,
   proofMethodEnum,
   proofModeEnum,
   returnConditionEnum,
@@ -53,6 +54,19 @@ export const deliveries = pgTable(
     deliveredAt: timestamp("delivered_at", { withTimezone: true }),
     // Prix figé au moment de la livraison (0 si facturation OFF). Jamais recalculé.
     billedPrice: integer("billed_price"),
+
+    // Preuves complémentaires MVP 1 (Photo, Signature, QR Inversé)
+    proofPhotoUrl: text("proof_photo_url"),
+    proofSignatureUrl: text("proof_signature_url"),
+    proofRecipientName: text("proof_recipient_name"),
+    reverseQrTokenHash: text("reverse_qr_token_hash"),
+    reverseQrGeneratedAt: timestamp("reverse_qr_generated_at", { withTimezone: true }),
+
+    // Gestion des encaissements MVP 1
+    amountCollected: integer("amount_collected"),
+    paymentMethod: paymentMethodEnum("payment_method"),
+    paymentReference: text("payment_reference"),
+    paymentCollectedAt: timestamp("payment_collected_at", { withTimezone: true }),
 
     assignedAt: timestamp("assigned_at", { withTimezone: true }),
     pickedUpAt: timestamp("picked_up_at", { withTimezone: true }),

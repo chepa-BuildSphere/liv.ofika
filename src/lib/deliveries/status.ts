@@ -27,6 +27,15 @@ export type ChangeStatusInput = TransitionOptions & {
   courierId?: string;
   /** Contexte enregistré dans l'audit (GPS, IP, détails). */
   context?: Pick<AuditEventInput, "lat" | "lng" | "accuracy" | "ip" | "userAgent" | "payload">;
+  /** Preuves additionnelles MVP 1 */
+  proofPhotoUrl?: string | null;
+  proofSignatureUrl?: string | null;
+  proofRecipientName?: string | null;
+  /** Encaissement à la livraison MVP 1 */
+  amountCollected?: number | null;
+  paymentMethod?: "CASH" | "WAVE" | "ORANGE_MONEY" | "MTN_MOMO" | "MOOV_MONEY" | "OTHER" | null;
+  paymentReference?: string | null;
+  paymentCollectedAt?: Date | null;
 };
 
 /**
@@ -114,6 +123,16 @@ export async function changeDeliveryStatus(executor: Executor, input: ChangeStat
           : company?.billingEnabled
             ? company.pricePerDelivery
             : 0;
+        if (input.proofPhotoUrl !== undefined) changes.proofPhotoUrl = input.proofPhotoUrl;
+        if (input.proofSignatureUrl !== undefined) changes.proofSignatureUrl = input.proofSignatureUrl;
+        if (input.proofRecipientName !== undefined) changes.proofRecipientName = input.proofRecipientName;
+        if (input.amountCollected !== undefined && input.amountCollected !== null) {
+          changes.amountCollected = input.amountCollected;
+          changes.paymentMethod = input.paymentMethod ?? "CASH";
+          changes.paymentReference = input.paymentReference ?? null;
+          changes.paymentCollectedAt = input.paymentCollectedAt ?? now;
+        }
+
         if (current.currentAttempt > 0) {
           await tx
             .update(deliveryAttempts)
@@ -179,6 +198,28 @@ export async function changeDeliveryStatus(executor: Executor, input: ChangeStat
       ip: input.context?.ip,
       userAgent: input.context?.userAgent,
     });
+
+    if (changes.amountCollected != null && changes.amountCollected > 0) {
+      await logEvent(tx, {
+        companyId: current.companyId,
+        deliveryId: current.id,
+        eventType: "PAYMENT_COLLECTED",
+        actorType: input.actor.actorType,
+        actorId: input.actor.actorId ?? null,
+        fromStatus: input.to,
+        toStatus: input.to,
+        payload: {
+          amountCollected: changes.amountCollected,
+          paymentMethod: changes.paymentMethod,
+          paymentReference: changes.paymentReference ?? null,
+        },
+        lat: input.context?.lat,
+        lng: input.context?.lng,
+        accuracy: input.context?.accuracy,
+        ip: input.context?.ip,
+        userAgent: input.context?.userAgent,
+      });
+    }
 
     const webhookEvent = webhookEventForStatus(current.status, input.to);
     if (webhookEvent) {

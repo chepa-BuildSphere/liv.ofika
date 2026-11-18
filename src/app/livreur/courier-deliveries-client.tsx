@@ -17,6 +17,7 @@ import {
   declareFailureAction,
   generateQrAction,
   verifyHandoverCodeAction,
+  verifyReverseQrAction,
   type AfterFailureState,
   type ConfirmPickupState,
   type DeclareArrivedState,
@@ -51,6 +52,9 @@ export type CourierClientDelivery = {
   district: string | null;
   packageDescription: string | null;
   amountToCollect: number | null;
+  amountCollected?: number | null;
+  paymentMethod?: string | null;
+  proofMode?: string | null;
   comment: string | null;
   status: DeliveryStatus;
   proofMethod: ProofMethod | null;
@@ -181,17 +185,39 @@ function CountdownBadge({ expiresAtIso }: { expiresAtIso: string }) {
 function DeliveryQrPanel({
   deliveryId,
   reference,
+  amountToCollect,
+  proofMode,
   isOnline,
   verifyState,
   verifyPending,
   onVerifyCode,
+  onVerifyReverseQr,
 }: {
   deliveryId: string;
   reference: string;
+  amountToCollect?: number | null;
+  proofMode?: string | null;
   isOnline: boolean;
   verifyState: VerifyHandoverState;
   verifyPending: boolean;
-  onVerifyCode: (deliveryId: string, code: string) => Promise<void>;
+  onVerifyCode: (
+    deliveryId: string,
+    code: string,
+    extra?: {
+      photoUrl?: string;
+      amountCollected?: number;
+      paymentMethod?: string;
+    },
+  ) => Promise<void>;
+  onVerifyReverseQr: (
+    deliveryId: string,
+    payload: string,
+    extra?: {
+      photoUrl?: string;
+      amountCollected?: number;
+      paymentMethod?: string;
+    },
+  ) => Promise<void>;
 }) {
   const [qrState, qrAction, qrPending] = useActionState<GenerateQrState, FormData>(
     generateQrAction,
@@ -199,25 +225,94 @@ function DeliveryQrPanel({
   );
   const [code, setCode] = useState("");
   const [submittingGps, setSubmittingGps] = useState(false);
+  const [useReverseQr, setUseReverseQr] = useState(proofMode === "REVERSE_QR");
+  const [reversePayload, setReversePayload] = useState("");
+
+  // Gestion des encaissements MVP 1
+  const [amountCollected, setAmountCollected] = useState(
+    amountToCollect != null && amountToCollect > 0 ? String(amountToCollect) : "",
+  );
+  const [paymentMethod, setPaymentMethod] = useState("CASH");
+
+  // Preuve photo MVP 1
+  const [photoDataUrl, setPhotoDataUrl] = useState<string>("");
+  const [compressingPhoto, setCompressingPhoto] = useState(false);
 
   const rowError =
     verifyState.status === "error" && verifyState.deliveryId === deliveryId
       ? verifyState.message
       : null;
 
+  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCompressingPhoto(true);
+    try {
+      const dataUrl = await compressImageToDataUrl(file);
+      setPhotoDataUrl(dataUrl);
+    } catch (err) {
+      alert((err as Error).message || "Erreur de traitement de la photo.");
+    } finally {
+      setCompressingPhoto(false);
+    }
+  }
+
   async function handleCodeSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!isOnline || verifyPending || submittingGps || code.length !== 4) return;
     setSubmittingGps(true);
     try {
-      await onVerifyCode(deliveryId, code);
+      const parsedAmount = amountCollected.trim() ? parseInt(amountCollected, 10) : undefined;
+      await onVerifyCode(deliveryId, code, {
+        photoUrl: photoDataUrl || undefined,
+        amountCollected: parsedAmount,
+        paymentMethod: parsedAmount ? paymentMethod : undefined,
+      });
+    } finally {
+      setSubmittingGps(false);
+    }
+  }
+
+  async function handleReverseSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!isOnline || verifyPending || submittingGps || !reversePayload.trim()) return;
+    setSubmittingGps(true);
+    try {
+      const parsedAmount = amountCollected.trim() ? parseInt(amountCollected, 10) : undefined;
+      await onVerifyReverseQr(deliveryId, reversePayload.trim(), {
+        photoUrl: photoDataUrl || undefined,
+        amountCollected: parsedAmount,
+        paymentMethod: parsedAmount ? paymentMethod : undefined,
+      });
     } finally {
       setSubmittingGps(false);
     }
   }
 
   return (
-    <div className="mt-3 space-y-4 rounded-[12px] border border-[#EAEAEA] bg-[#FAFAFA] p-4">
+    <div className="mt-3 space-y-4 rounded-[12px] border border-[#EAEAEA] bg-[#FAFAFA] p-4 text-xs">
+      {/* Sélecteur de méthode de validation : QR Standard vs QR Inversé */}
+      <div className="flex rounded-lg border border-[#EAEAEA] bg-white p-1">
+        <button
+          type="button"
+          onClick={() => setUseReverseQr(false)}
+          className={`flex-1 rounded py-1.5 text-center font-bold transition-colors ${
+            !useReverseQr ? "bg-[#111111] text-white" : "text-ink-muted hover:text-ink"
+          }`}
+        >
+          1. Mon QR (Livreur)
+        </button>
+        <button
+          type="button"
+          onClick={() => setUseReverseQr(true)}
+          className={`flex-1 rounded py-1.5 text-center font-bold transition-colors ${
+            useReverseQr ? "bg-[#111111] text-white" : "text-ink-muted hover:text-ink"
+          }`}
+        >
+          2. QR Destinataire (Inversé)
+        </button>
+      </div>
+
       {qrState.status === "error" && (
         <div role="alert" className="flex items-start gap-2 rounded-[8px] border border-[#DC2626]/20 bg-[#FEF2F2] p-2.5 text-xs text-[#DC2626]">
           <AlertTriangleIcon className="h-4 w-4 shrink-0 text-[#DC2626]" />
@@ -225,120 +320,207 @@ function DeliveryQrPanel({
         </div>
       )}
 
-      {qrState.status === "ready" ? (
-        <div className="space-y-3 text-center">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#EAEAEA] pb-2 text-xs">
-            <span className="font-semibold text-[#111111]">
-              Faites scanner ce QR par le destinataire
-            </span>
-            <CountdownBadge key={qrState.qrTokenId} expiresAtIso={qrState.expiresAtIso} />
+      {!useReverseQr ? (
+        qrState.status === "ready" ? (
+          <div className="space-y-3 text-center">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#EAEAEA] pb-2 text-xs">
+              <span className="font-semibold text-[#111111]">
+                Faites scanner ce QR par le destinataire
+              </span>
+              <CountdownBadge key={qrState.qrTokenId} expiresAtIso={qrState.expiresAtIso} />
+            </div>
+
+            <div className="relative mx-auto inline-block rounded-[12px] border border-[#EAEAEA] bg-white p-3 shadow-sm">
+              <img
+                src={`data:image/svg+xml;utf8,${encodeURIComponent(qrState.qrSvg)}`}
+                alt={`QR code de confirmation pour ${reference}`}
+                className="h-48 w-48 sm:h-52 sm:w-52"
+              />
+            </div>
+
+            {qrState.revokedPreviousCount > 0 && (
+              <p className="text-[11px] text-[#787774]">
+                Le précédent QR a été invalidé automatiquement pour des raisons de sécurité.
+              </p>
+            )}
+
+            <form action={qrAction}>
+              <input type="hidden" name="deliveryId" value={deliveryId} />
+              <button
+                type="submit"
+                disabled={qrPending || !isOnline}
+                className="inline-flex h-9 w-full cursor-pointer items-center justify-center gap-1.5 rounded-[8px] border border-[#EAEAEA] bg-white text-xs font-medium text-[#111111] transition-colors hover:bg-[#F7F6F3] disabled:opacity-60"
+              >
+                {qrPending ? (
+                  <>
+                    <SpinnerIcon className="h-3.5 w-3.5" />
+                    <span>Régénération…</span>
+                  </>
+                ) : (
+                  <span>Régénérer un nouveau QR</span>
+                )}
+              </button>
+            </form>
           </div>
-
-          <div className="relative mx-auto inline-block rounded-[12px] border border-[#EAEAEA] bg-white p-3 shadow-sm">
-            <img
-              src={`data:image/svg+xml;utf8,${encodeURIComponent(qrState.qrSvg)}`}
-              alt={`QR code de confirmation pour ${reference}`}
-              className="h-48 w-48 sm:h-52 sm:w-52"
-            />
-          </div>
-
-          {qrState.revokedPreviousCount > 0 && (
-            <p className="text-[11px] text-[#787774]">
-              Le précédent QR a été invalidé automatiquement pour des raisons de sécurité.
-            </p>
-          )}
-
+        ) : (
           <form action={qrAction}>
             <input type="hidden" name="deliveryId" value={deliveryId} />
             <button
               type="submit"
               disabled={qrPending || !isOnline}
-              className="inline-flex h-9 w-full cursor-pointer items-center justify-center gap-1.5 rounded-[8px] border border-[#EAEAEA] bg-white text-xs font-medium text-[#111111] transition-colors hover:bg-[#F7F6F3] disabled:opacity-60"
+              className="inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-[10px] bg-[#C2410C] text-xs font-semibold uppercase tracking-wider text-white shadow-sm transition-all hover:bg-[#9A3412] active:scale-[0.99] disabled:opacity-60"
             >
               {qrPending ? (
                 <>
-                  <SpinnerIcon className="h-3.5 w-3.5" />
-                  <span>Régénération…</span>
+                  <SpinnerIcon className="h-4 w-4" />
+                  <span>Génération du QR code…</span>
                 </>
               ) : (
-                <span>Régénérer un nouveau QR</span>
+                <>
+                  <QrCodeIcon className="h-4 w-4" />
+                  <span>Afficher le QR code client (3 min)</span>
+                </>
               )}
             </button>
           </form>
-        </div>
+        )
       ) : (
-        <form action={qrAction}>
-          <input type="hidden" name="deliveryId" value={deliveryId} />
+        <form onSubmit={handleReverseSubmit} className="space-y-3 rounded-lg border border-[#EAEAEA] bg-white p-3">
+          <p className="font-semibold text-ink">Scanner le QR présenté par le destinataire</p>
+          <p className="text-[11px] text-ink-muted">
+            Saisissez ou collez le code lu par la caméra du téléphone (format OFIKA-REV:...)
+          </p>
+          <input
+            type="text"
+            required
+            placeholder="OFIKA-REV:REF-001:token..."
+            value={reversePayload}
+            onChange={(e) => setReversePayload(e.target.value)}
+            className="w-full rounded border border-[#EAEAEA] p-2 font-mono text-xs"
+          />
           <button
             type="submit"
-            disabled={qrPending || !isOnline}
-            className="inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-[10px] bg-[#C2410C] text-xs font-semibold uppercase tracking-wider text-white shadow-sm transition-all hover:bg-[#9A3412] active:scale-[0.99] disabled:opacity-60"
+            disabled={!isOnline || verifyPending || submittingGps || !reversePayload.trim()}
+            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded bg-[#111111] font-bold text-white hover:bg-black"
           >
-            {qrPending ? (
-              <>
-                <SpinnerIcon className="h-4 w-4" />
-                <span>Génération du QR code…</span>
-              </>
-            ) : (
-              <>
-                <QrCodeIcon className="h-4 w-4" />
-                <span>Afficher le QR code client (3 min)</span>
-              </>
-            )}
+            {submittingGps ? <SpinnerIcon className="h-4 w-4" /> : <CheckCircleIcon className="h-4 w-4" />}
+            <span>Valider avec le QR du destinataire</span>
           </button>
         </form>
       )}
 
-      {/* Saisie du code à 4 chiffres */}
-      <form onSubmit={handleCodeSubmit} className="space-y-3 border-t border-[#EAEAEA] pt-3">
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-[#787774]">
-            Code à 4 chiffres dicté par le destinataire
-          </label>
-          <p className="text-[11px] text-[#787774]">
-            Le client reçoit ce code par SMS ou sur son écran de scan.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            inputMode="numeric"
-            pattern="[0-9]{4}"
-            maxLength={4}
-            autoComplete="one-time-code"
-            aria-label="Code de remise à 4 chiffres"
-            placeholder="0000"
-            value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 4))}
-            className="h-12 w-32 rounded-[8px] border border-[#EAEAEA] bg-white text-center font-mono text-xl font-bold tracking-[0.3em] text-[#111111] focus:border-[#C2410C] focus:outline-none focus:ring-2 focus:ring-[#C2410C]/20"
-          />
-          <button
-            type="submit"
-            disabled={!isOnline || verifyPending || submittingGps || code.length !== 4}
-            className="inline-flex h-12 flex-1 cursor-pointer items-center justify-center gap-2 rounded-[8px] bg-[#111111] text-xs font-bold uppercase tracking-wider text-white transition-all hover:bg-[#2F3437] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {submittingGps || verifyPending ? (
-              <>
-                <SpinnerIcon className="h-4 w-4" />
-                <span>Validation GPS…</span>
-              </>
-            ) : (
-              <>
-                <CheckCircleIcon className="h-4 w-4" />
-                <span>Valider la remise</span>
-              </>
-            )}
-          </button>
-        </div>
-
-        {rowError && (
-          <div role="alert" className="flex items-start gap-2 rounded-[8px] border border-[#DC2626]/20 bg-[#FEF2F2] p-2.5 text-xs text-[#DC2626]">
-            <AlertTriangleIcon className="h-4 w-4 shrink-0 text-[#DC2626]" />
-            <span className="font-medium">{rowError}</span>
+      {/* Section Encaissement (COD) */}
+      {(amountToCollect != null && amountToCollect > 0) && (
+        <div className="space-y-2 border-t border-[#EAEAEA] pt-3">
+          <div className="flex items-center justify-between">
+            <span className="font-semibold text-ink">Encaissement à la livraison (COD)</span>
+            <span className="font-bold text-accent-strong tabular-nums">
+              Prévu : {amountToCollect.toLocaleString("fr-FR")} F CFA
+            </span>
           </div>
-        )}
-      </form>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] uppercase font-bold text-ink-muted">Montant encaissé</label>
+              <input
+                type="number"
+                min={0}
+                value={amountCollected}
+                onChange={(e) => setAmountCollected(e.target.value)}
+                placeholder="Montant F CFA"
+                className="mt-0.5 w-full rounded border border-[#EAEAEA] bg-white p-2 font-bold tabular-nums"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase font-bold text-ink-muted">Mode de règlement</label>
+              <select
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                className="mt-0.5 w-full rounded border border-[#EAEAEA] bg-white p-2 font-medium"
+              >
+                <option value="CASH">Espèces</option>
+                <option value="WAVE">Wave</option>
+                <option value="ORANGE_MONEY">Orange Money</option>
+                <option value="MTN_MOMO">MTN Mobile Money</option>
+                <option value="MOOV_MONEY">Moov Money</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Section Photo de preuve */}
+      {(proofMode === "QR_PHOTO" || proofMode === "QR_PHOTO_SIGNATURE" || true) && (
+        <div className="space-y-1.5 border-t border-[#EAEAEA] pt-3">
+          <div className="flex items-center justify-between">
+            <label className="font-semibold text-ink">
+              Photo du colis remis {proofMode?.includes("PHOTO") ? "(Obligatoire)" : "(Facultatif)"}
+            </label>
+            {photoDataUrl && <span className="text-success font-bold text-[10px]">Photo prête ✔</span>}
+          </div>
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handlePhotoChange}
+            className="w-full text-[11px] text-ink-muted file:mr-2 file:rounded file:border-0 file:bg-[#111111] file:px-2.5 file:py-1 file:text-xs file:font-semibold file:text-white"
+          />
+          {compressingPhoto && <p className="text-[10px] text-ink-muted animate-pulse">Compression de la photo…</p>}
+        </div>
+      )}
+
+      {/* Saisie du code à 4 chiffres (Standard) */}
+      {!useReverseQr && (
+        <form onSubmit={handleCodeSubmit} className="space-y-3 border-t border-[#EAEAEA] pt-3">
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-[#787774]">
+              Code à 4 chiffres dicté par le destinataire
+            </label>
+            <p className="text-[11px] text-[#787774]">
+              Le client reçoit ce code par SMS ou sur son écran de scan.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]{4}"
+              maxLength={4}
+              autoComplete="one-time-code"
+              aria-label="Code de remise à 4 chiffres"
+              placeholder="0000"
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 4))}
+              className="h-12 w-32 rounded-[8px] border border-[#EAEAEA] bg-white text-center font-mono text-xl font-bold tracking-[0.3em] text-[#111111] focus:border-[#C2410C] focus:outline-none focus:ring-2 focus:ring-[#C2410C]/20"
+            />
+            <button
+              type="submit"
+              disabled={!isOnline || verifyPending || submittingGps || code.length !== 4}
+              className="inline-flex h-12 flex-1 cursor-pointer items-center justify-center gap-2 rounded-[8px] bg-[#111111] text-xs font-bold uppercase tracking-wider text-white transition-all hover:bg-[#2F3437] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {submittingGps || verifyPending ? (
+                <>
+                  <SpinnerIcon className="h-4 w-4" />
+                  <span>Validation GPS…</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircleIcon className="h-4 w-4" />
+                  <span>Valider la remise</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {rowError && (
+            <div role="alert" className="flex items-start gap-2 rounded-[8px] border border-[#DC2626]/20 bg-[#FEF2F2] p-2.5 text-xs text-[#DC2626]">
+              <AlertTriangleIcon className="h-4 w-4 shrink-0 text-[#DC2626]" />
+              <span className="font-medium">{rowError}</span>
+            </div>
+          )}
+        </form>
+      )}
     </div>
   );
 }
@@ -597,6 +779,10 @@ export function CourierDeliveriesClient({
     VerifyHandoverState,
     FormData
   >(verifyHandoverCodeAction, { status: "idle" });
+  const [verifyReverseState, verifyReverseFormAction, verifyReversePending] = useActionState<
+    VerifyHandoverState,
+    FormData
+  >(verifyReverseQrAction, { status: "idle" });
   const [failureState, failureFormAction, failurePending] = useActionState<
     DeclareFailureState,
     FormData
@@ -648,7 +834,15 @@ export function CourierDeliveriesClient({
     });
   }
 
-  async function handleVerifyHandoverCode(deliveryId: string, code: string) {
+  async function handleVerifyHandoverCode(
+    deliveryId: string,
+    code: string,
+    extra?: {
+      photoUrl?: string;
+      amountCollected?: number;
+      paymentMethod?: string;
+    },
+  ) {
     if (!isOnline) return;
     const coords = await readCurrentGps(2000);
     const fd = new FormData();
@@ -659,8 +853,38 @@ export function CourierDeliveriesClient({
       fd.set("lng", String(coords.lng));
       fd.set("accuracy", String(coords.accuracy));
     }
+    if (extra?.photoUrl) fd.set("photoUrl", extra.photoUrl);
+    if (extra?.amountCollected != null) fd.set("amountCollected", String(extra.amountCollected));
+    if (extra?.paymentMethod) fd.set("paymentMethod", extra.paymentMethod);
     startTransition(() => {
       verifyFormAction(fd);
+    });
+  }
+
+  async function handleVerifyReverseQr(
+    deliveryId: string,
+    payload: string,
+    extra?: {
+      photoUrl?: string;
+      amountCollected?: number;
+      paymentMethod?: string;
+    },
+  ) {
+    if (!isOnline) return;
+    const coords = await readCurrentGps(2000);
+    const fd = new FormData();
+    fd.set("deliveryId", deliveryId);
+    fd.set("scannedPayload", payload);
+    if (coords) {
+      fd.set("lat", String(coords.lat));
+      fd.set("lng", String(coords.lng));
+      fd.set("accuracy", String(coords.accuracy));
+    }
+    if (extra?.photoUrl) fd.set("photoUrl", extra.photoUrl);
+    if (extra?.amountCollected != null) fd.set("amountCollected", String(extra.amountCollected));
+    if (extra?.paymentMethod) fd.set("paymentMethod", extra.paymentMethod);
+    startTransition(() => {
+      verifyReverseFormAction(fd);
     });
   }
 
@@ -1096,10 +1320,18 @@ export function CourierDeliveriesClient({
                                   <DeliveryQrPanel
                                     deliveryId={d.id}
                                     reference={d.reference}
+                                    amountToCollect={d.amountToCollect}
+                                    proofMode={d.proofMode}
                                     isOnline={isOnline}
-                                    verifyState={verifyState}
-                                    verifyPending={verifyPending}
+                                    verifyState={
+                                      verifyReverseState.status !== "idle" &&
+                                      verifyReverseState.deliveryId === d.id
+                                        ? verifyReverseState
+                                        : verifyState
+                                    }
+                                    verifyPending={verifyPending || verifyReversePending}
                                     onVerifyCode={handleVerifyHandoverCode}
+                                    onVerifyReverseQr={handleVerifyReverseQr}
                                   />
                                   <FailureFormPanel
                                     deliveryId={d.id}

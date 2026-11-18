@@ -32,11 +32,25 @@ export const deliveryStatusEnum = pgEnum("delivery_status", [
   "CANCELLED",
 ]);
 
-// Mode de preuve demandé à la création de la livraison
-export const proofModeEnum = pgEnum("proof_mode", ["QR", "QR_OTP"]);
+// Mode de preuve demandé à la création de la livraison (MVP 1 : Standard QR, Renforcé OTP, Renforcé Photo, Maximal Photo + Signature, ou QR Inversé)
+export const proofModeEnum = pgEnum("proof_mode", [
+  "QR",
+  "QR_OTP",
+  "QR_PHOTO",
+  "QR_PHOTO_SIGNATURE",
+  "REVERSE_QR",
+]);
 
 // Méthode de preuve réellement utilisée pour valider la livraison
-export const proofMethodEnum = pgEnum("proof_method", ["QR", "QR_OTP", "OTP", "MANUAL"]);
+export const proofMethodEnum = pgEnum("proof_method", [
+  "QR",
+  "QR_OTP",
+  "OTP",
+  "MANUAL",
+  "QR_PHOTO",
+  "QR_PHOTO_SIGNATURE",
+  "REVERSE_QR",
+]);
 
 // Motifs d'échec (mvp.md §6.5)
 export const failureReasonEnum = pgEnum("failure_reason", [
@@ -100,3 +114,30 @@ export const billingSettingEnum = pgEnum("billing_setting", ["BILLING_ENABLED", 
 
 // État d'un relevé mensuel
 export const statementStatusEnum = pgEnum("statement_status", ["OPEN", "ISSUED", "PAID"]);
+
+// Modes de paiement pour les encaissements à la livraison (MVP 1)
+export const paymentMethodEnum = pgEnum("payment_method", [
+  "CASH",
+  "WAVE",
+  "ORANGE_MONEY",
+  "MTN_MOMO",
+  "MOOV_MONEY",
+  "OTHER",
+]);
+
+// Statut d'un litige (MVP 1)
+export const disputeStatusEnum = pgEnum("dispute_status", [
+  "OPEN",
+  "UNDER_INVESTIGATION",
+  "RESOLVED",
+  "REJECTED",
+]);
+
+// Motif d'un litige (MVP 1)
+export const disputeReasonEnum = pgEnum("dispute_reason", [
+  "PACKAGE_NOT_RECEIVED",
+  "PACKAGE_DAMAGED",
+  "PAYMENT_DISCREPANCY",
+  "WRONG_ITEMS",
+  "OTHER",
+]);

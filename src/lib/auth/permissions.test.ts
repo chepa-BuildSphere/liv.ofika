@@ -39,6 +39,10 @@ const MATRIX: [Action, string, [Cell, Cell, Cell, Cell, Cell, Cell]][] = [
   ["audit.view", "Consulter le journal d'audit", ["👁", "👁", "👁", "👁", "🔸", "👁"]],
   ["audit.modify", "Modifier / supprimer le journal", ["❌", "❌", "❌", "❌", "❌", "❌"]],
   ["delivery.generatePdf", "Générer un bordereau PDF", ["❌", "✅", "✅", "❌", "🔸", "✅"]],
+  ["cash.reconcile", "Rapprochement et remise de caisse", ["❌", "✅", "✅", "❌", "❌", "❌"]],
+  ["cash.viewHandovers", "Consulter les remises d'espèces", ["👁", "✅", "✅", "❌", "❌", "❌"]],
+  ["dispute.manage", "Gérer les litiges", ["❌", "✅", "✅", "❌", "❌", "❌"]],
+  ["delivery.comment", "Commenter une livraison", ["❌", "✅", "✅", "❌", "🔸", "❌"]],
 ];
 
 // ─── Acteurs (entreprise C1) ──────────────────────────────────────────────────
@@ -81,7 +85,12 @@ const STATUS_FOR: Partial<Record<Action, DeliveryStatus>> = {
 function inScope(action: Action): unknown {
   if (action === "company.createOrSuspend") return undefined;
   if (action.startsWith("audit.")) return courierAudit;
-  if (action.startsWith("delivery.") || action.startsWith("proof.") || action.startsWith("return.")) {
+  if (
+    action.startsWith("delivery.") ||
+    action.startsWith("proof.") ||
+    action.startsWith("return.") ||
+    action.startsWith("dispute.")
+  ) {
     return delivery(STATUS_FOR[action] ?? "ASSIGNED");
   }
   return { companyId: C1 };

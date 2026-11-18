@@ -4,6 +4,7 @@ import { refresh } from "next/cache";
 import { db } from "@/db";
 import { env } from "@/env";
 import { requireCourier } from "@/lib/auth/courier-session";
+import { courierActor } from "@/lib/auth/permissions";
 import {
   chooseCourierAfterFailure,
   confirmCourierPickup,
@@ -14,6 +15,7 @@ import {
   verifyDeliveryHandoverCode,
   type AfterFailureChoice,
 } from "@/lib/deliveries/deliveries";
+import { addDeliveryComment, verifyReverseQrHandover } from "@/lib/mvp1";
 import { getRequestMeta } from "@/lib/request-meta";
 
 export type ConfirmPickupState =
@@ -153,6 +155,18 @@ export async function verifyHandoverCodeAction(
   const lng = formData.get("lng")?.toString() ?? null;
   const accuracy = formData.get("accuracy")?.toString() ?? null;
 
+  const photoUrl = formData.get("photoUrl") ? String(formData.get("photoUrl")) : null;
+  const signatureUrl = formData.get("signatureUrl") ? String(formData.get("signatureUrl")) : null;
+  const recipientName = formData.get("recipientName") ? String(formData.get("recipientName")) : null;
+  const rawAmount = formData.get("amountCollected") ? String(formData.get("amountCollected")).trim() : "";
+  const amountCollected = rawAmount ? parseInt(rawAmount, 10) : null;
+  const paymentMethod = (formData.get("paymentMethod")
+    ? String(formData.get("paymentMethod"))
+    : null) as "CASH" | "WAVE" | "ORANGE_MONEY" | "MTN_MOMO" | "MOOV_MONEY" | "OTHER" | null;
+  const paymentReference = formData.get("paymentReference")
+    ? String(formData.get("paymentReference"))
+    : null;
+
   try {
     const meta = await getRequestMeta();
     const res = await verifyDeliveryHandoverCode(
@@ -164,6 +178,12 @@ export async function verifyHandoverCodeAction(
         gps: { lat, lng, accuracy },
         ip: meta.ip,
         userAgent: meta.userAgent,
+        photoUrl,
+        signatureUrl,
+        recipientName,
+        amountCollected,
+        paymentMethod,
+        paymentReference,
       },
       env.encryptionKey,
     );
@@ -190,6 +210,73 @@ export async function verifyHandoverCodeAction(
     }
     throw e;
   }
+}
+
+export async function verifyReverseQrAction(
+  _prev: VerifyHandoverState,
+  formData: FormData,
+): Promise<VerifyHandoverState> {
+  const courier = await requireCourier();
+  const deliveryId = String(formData.get("deliveryId") ?? "").trim();
+  const scannedPayload = String(formData.get("scannedPayload") ?? "").trim();
+  const photoUrl = formData.get("photoUrl") ? String(formData.get("photoUrl")) : null;
+  const signatureUrl = formData.get("signatureUrl") ? String(formData.get("signatureUrl")) : null;
+  const recipientName = formData.get("recipientName") ? String(formData.get("recipientName")) : null;
+  const rawAmount = formData.get("amountCollected") ? String(formData.get("amountCollected")).trim() : "";
+  const amountCollected = rawAmount ? parseInt(rawAmount, 10) : null;
+  const paymentMethod = (formData.get("paymentMethod")
+    ? String(formData.get("paymentMethod"))
+    : null) as "CASH" | "WAVE" | "ORANGE_MONEY" | "MTN_MOMO" | "MOOV_MONEY" | "OTHER" | null;
+  const paymentReference = formData.get("paymentReference")
+    ? String(formData.get("paymentReference"))
+    : null;
+  const lat = formData.get("lat")?.toString() ?? null;
+  const lng = formData.get("lng")?.toString() ?? null;
+  const accuracy = formData.get("accuracy")?.toString() ?? null;
+
+  try {
+    const meta = await getRequestMeta();
+    await verifyReverseQrHandover(db, courier, {
+      deliveryId,
+      scannedPayload,
+      gps: { lat, lng, accuracy },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+      photoUrl,
+      signatureUrl,
+      recipientName,
+      amountCollected,
+      paymentMethod,
+      paymentReference,
+    });
+    refresh();
+    return {
+      status: "delivered",
+      deliveryId,
+      message: "Livré (QR Inversé) ✅ — Colis confirmé et verrouillé.",
+      suspiciousDeviceReuse: false,
+    };
+  } catch (e) {
+    if (e instanceof DeliveryError) {
+      return { status: "error", deliveryId, message: e.message };
+    }
+    throw e;
+  }
+}
+
+export async function addCourierCommentAction(formData: FormData) {
+  const courier = await requireCourier();
+  const deliveryId = String(formData.get("deliveryId") ?? "").trim();
+  const companyId = String(formData.get("companyId") ?? "").trim();
+  const message = String(formData.get("message") ?? "").trim();
+
+  await addDeliveryComment(db, courierActor(courier), {
+    companyId,
+    deliveryId,
+    message,
+    authorName: courier.name ?? "Livreur",
+  });
+  refresh();
 }
 
 export type DeclareFailureState =

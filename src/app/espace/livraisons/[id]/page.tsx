@@ -16,6 +16,9 @@ import { isSafeMediaUrl } from "@/lib/media/safe-url";
 import { formatPhone } from "@/lib/validation";
 import { DeliveryRowActions } from "../delivery-row-actions";
 import { ForceDeliveredForm } from "./force-delivered-form";
+import { listCompanyDisputes, listDeliveryComments } from "@/lib/mvp1";
+import { DeliveryCommentsSection } from "./delivery-comments-section";
+import { DeliveryDisputeSection } from "./delivery-dispute-section";
 
 export const metadata: Metadata = { title: "Détail livraison — Ofika Delivery" };
 
@@ -79,6 +82,10 @@ async function DeliveryDetailView({ params }: { params: Promise<{ id: string }> 
           .map((c) => ({ id: c.id, name: c.name }))
       : [];
 
+  const comments = await listDeliveryComments(db, user.companyId, id);
+  const disputes = await listCompanyDisputes(db, user.companyId, id);
+  const canManageDisputes = user.roles.includes("COMPANY_ADMIN") || user.roles.includes("MANAGER");
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -92,14 +99,24 @@ async function DeliveryDetailView({ params }: { params: Promise<{ id: string }> 
             </span>
           )}
           {detail.canGeneratePdf && (
-            <a
-              href={`/espace/livraisons/${d.id}/bordereau.pdf`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-secondary"
-            >
-              Bordereau PDF
-            </a>
+            <>
+              <a
+                href={`/espace/livraisons/${d.id}/bordereau.pdf`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-secondary"
+              >
+                Bordereau PDF
+              </a>
+              <a
+                href={`/espace/livraisons/${d.id}/preuve.pdf`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-primary"
+              >
+                Dossier de preuve (PDF)
+              </a>
+            </>
           )}
           <span className="rounded-full border border-line bg-surface px-3 py-1 text-xs font-medium">
             {deliveryStatusLabel(d.status, d.proofMethod)}
@@ -203,6 +220,47 @@ async function DeliveryDetailView({ params }: { params: Promise<{ id: string }> 
             <div>
               <dt className="text-xs font-medium uppercase tracking-wide text-ink-muted">Tarif facturé</dt>
               <dd className="mt-0.5 tabular-nums">{d.billedPrice.toLocaleString("fr-FR")} F CFA</dd>
+            </div>
+          )}
+          {d.amountToCollect !== null && (
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-wide text-ink-muted">Montant prévu</dt>
+              <dd className="mt-0.5 tabular-nums font-semibold">{d.amountToCollect.toLocaleString("fr-FR")} F CFA</dd>
+            </div>
+          )}
+          {d.amountCollected !== null && (
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-wide text-ink-muted">Montant encaissé</dt>
+              <dd className="mt-0.5 tabular-nums font-bold text-success">
+                {d.amountCollected.toLocaleString("fr-FR")} F CFA
+                {d.paymentMethod ? ` (${d.paymentMethod})` : ""}
+              </dd>
+            </div>
+          )}
+          {d.proofPhotoUrl && (
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-wide text-ink-muted">Photo de preuve</dt>
+              <dd className="mt-1">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={d.proofPhotoUrl}
+                  alt="Preuve colis remis"
+                  className="h-20 w-auto rounded border border-line object-cover"
+                />
+              </dd>
+            </div>
+          )}
+          {d.proofSignatureUrl && (
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-wide text-ink-muted">Signature destinataire</dt>
+              <dd className="mt-1">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={d.proofSignatureUrl}
+                  alt="Signature électronique"
+                  className="h-16 w-auto rounded border border-line bg-surface object-contain"
+                />
+              </dd>
             </div>
           )}
           {d.comment && (
@@ -371,6 +429,19 @@ async function DeliveryDetailView({ params }: { params: Promise<{ id: string }> 
           </ol>
         )}
       </section>
+
+      {/* MVP 1 : Litiges & Contentieux */}
+      <DeliveryDisputeSection
+        deliveryId={d.id}
+        disputes={disputes}
+        canManage={canManageDisputes}
+      />
+
+      {/* MVP 1 : Fil de discussion Entreprise <-> Livreur */}
+      <DeliveryCommentsSection
+        deliveryId={d.id}
+        comments={comments}
+      />
     </div>
   );
 }

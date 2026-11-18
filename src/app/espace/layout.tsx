@@ -39,6 +39,12 @@ async function AsyncEspaceSidebar() {
   const canCouriers = can(actor, "couriers.manage", company).allowed;
   const canTeam = can(actor, "company.manageUsers", company).allowed;
   const canBilling = can(actor, "billing.viewStatements", company).allowed;
+  const canCash = can(actor, "cash.viewHandovers", company).allowed;
+  const canDisputes = can(actor, "dispute.manage", {
+    companyId: user.companyId,
+    status: "DELIVERED",
+    courierId: null,
+  }).allowed;
 
   return (
     <EspaceSidebarNav
@@ -51,6 +57,8 @@ async function AsyncEspaceSidebar() {
         canCouriers,
         canTeam,
         canBilling,
+        canCash,
+        canDisputes,
       }}
       notificationBell={<NotificationBell initialNotifications={notifications} />}
       logoutAction={userLogoutAction}

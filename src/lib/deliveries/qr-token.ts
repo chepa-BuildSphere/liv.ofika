@@ -8,6 +8,7 @@ import { hashCode, hashToken, randomDigits, randomToken, verifyCode } from "@/li
 import { tenantScope } from "@/lib/tenant/scope";
 import { DeliveryError, normalizeGpsCoords, UUID_RE, type GpsCoordsInput } from "./errors";
 import { changeDeliveryStatus } from "./status";
+import { getProofModeRequirements, validateProofRequirements } from "@/lib/mvp1";
 
 export const QR_TOKEN_TTL_MS = 3 * 60 * 1000; // 3 minutes (mvp.md §8.2)
 export const MAX_HANDOVER_ATTEMPTS = 3;
@@ -532,6 +533,12 @@ export async function verifyDeliveryHandoverCode(
     gps?: GpsCoordsInput | null;
     ip?: string | null;
     userAgent?: string | null;
+    photoUrl?: string | null;
+    signatureUrl?: string | null;
+    recipientName?: string | null;
+    amountCollected?: number | null;
+    paymentMethod?: "CASH" | "WAVE" | "ORANGE_MONEY" | "MTN_MOMO" | "MOOV_MONEY" | "OTHER" | null;
+    paymentReference?: string | null;
   },
   masterKey: Buffer,
 ): Promise<VerifyHandoverResult> {
@@ -712,11 +719,22 @@ export async function verifyDeliveryHandoverCode(
       })
       .where(eq(qrTokens.id, qr.id));
 
+    // Vérifier les exigences de preuve MVP 1 (photo, signature)
+    const proofValidation = validateProofRequirements(delivery.proofMode, {
+      photoUrl: input.photoUrl,
+      signatureUrl: input.signatureUrl,
+    });
+    if (!proofValidation.valid) {
+      throw new DeliveryError("INVALID", proofValidation.error ?? "Preuve incomplète.");
+    }
+
+    const req = getProofModeRequirements(delivery.proofMode);
+
     const updated = await changeDeliveryStatus(tx, {
       companyId: delivery.companyId,
       deliveryId: delivery.id,
       to: "DELIVERED",
-      proofMethod: "QR",
+      proofMethod: req.targetProofMethod,
       actor: { actorType: "COURIER", actorId: courier.id },
       context: {
         lat: coords.lat,
@@ -728,8 +746,16 @@ export async function verifyDeliveryHandoverCode(
           qrTokenId: qr.id,
           attemptNumber: delivery.currentAttempt,
           gpsMissing: coords.gpsMissing,
+          hasPhoto: Boolean(input.photoUrl),
+          hasSignature: Boolean(input.signatureUrl),
         },
       },
+      proofPhotoUrl: input.photoUrl,
+      proofSignatureUrl: input.signatureUrl,
+      proofRecipientName: input.recipientName,
+      amountCollected: input.amountCollected,
+      paymentMethod: input.paymentMethod,
+      paymentReference: input.paymentReference,
     });
 
     let suspiciousDeviceReuse = false;

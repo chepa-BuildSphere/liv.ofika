@@ -20,7 +20,14 @@ export const DELIVERY_STATUSES = [
 ] as const;
 export type DeliveryStatus = (typeof DELIVERY_STATUSES)[number];
 
-export type ProofMethod = "QR" | "QR_OTP" | "OTP" | "MANUAL";
+export type ProofMethod =
+  | "QR"
+  | "QR_OTP"
+  | "OTP"
+  | "MANUAL"
+  | "QR_PHOTO"
+  | "QR_PHOTO_SIGNATURE"
+  | "REVERSE_QR";
 
 /** Transitions normales. DELIVERED ici = validé par preuve (QR, OTP). */
 const NORMAL: Record<DeliveryStatus, readonly DeliveryStatus[]> = {

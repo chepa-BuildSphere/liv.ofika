@@ -8,7 +8,13 @@ export type DeliveryLabelData = {
   reference: string;
   status: DeliveryStatus;
   proofMethod: ProofMethod | null;
-  proofMode: "QR" | "QR_OTP";
+  proofMode:
+    | "QR"
+    | "QR_OTP"
+    | "QR_PHOTO"
+    | "QR_PHOTO_SIGNATURE"
+    | "REVERSE_QR"
+    | (string & {});
   recipientName: string;
   recipientPhone: string;
   address: string;

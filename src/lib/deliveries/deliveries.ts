@@ -27,6 +27,7 @@ import {
   type GpsCoordsInput,
 } from "./errors";
 import { renderDeliveryLabelPdf } from "./label-pdf";
+import { renderProofDossierPdf } from "@/lib/mvp1";
 import {
   chooseCourierAfterFailure,
   declareCourierFailure,
@@ -152,7 +153,14 @@ export type CreateDeliveryInput = {
   amountToCollect?: number | string | null;
   comment?: string | null;
   metadata?: Record<string, unknown> | null;
-  proofMode?: "QR" | "QR_OTP" | string | null;
+  proofMode?:
+    | "QR"
+    | "QR_OTP"
+    | "QR_PHOTO"
+    | "QR_PHOTO_SIGNATURE"
+    | "REVERSE_QR"
+    | string
+    | null;
 };
 
 export type ValidatedDeliveryInput = {
@@ -165,7 +173,7 @@ export type ValidatedDeliveryInput = {
   amountToCollect: number | null;
   comment: string | null;
   metadata: Record<string, unknown> | null;
-  proofMode: "QR";
+  proofMode: "QR" | "QR_PHOTO" | "QR_PHOTO_SIGNATURE" | "REVERSE_QR";
 };
 
 export type ValidationResult =
@@ -243,10 +251,18 @@ export function validateDeliveryInput(input: CreateDeliveryInput): ValidationRes
     }
   }
 
-  const rawProof = (input.proofMode ?? "").trim();
+  const rawProof = (input.proofMode ?? "").trim().toUpperCase();
+  let resolvedProofMode: "QR" | "QR_PHOTO" | "QR_PHOTO_SIGNATURE" | "REVERSE_QR" = "QR";
+
   if (rawProof === "QR_OTP") {
     fields.proofMode = "L'option QR + OTP est bientôt disponible (en maintenance dans le MVP).";
-  } else if (rawProof && rawProof !== "QR") {
+  } else if (rawProof === "QR_PHOTO") {
+    resolvedProofMode = "QR_PHOTO";
+  } else if (rawProof === "QR_PHOTO_SIGNATURE") {
+    resolvedProofMode = "QR_PHOTO_SIGNATURE";
+  } else if (rawProof === "REVERSE_QR") {
+    resolvedProofMode = "REVERSE_QR";
+  } else if (rawProof && rawProof !== "QR" && rawProof !== "STANDARD") {
     fields.proofMode = "Mode de preuve invalide.";
   }
 
@@ -266,7 +282,7 @@ export function validateDeliveryInput(input: CreateDeliveryInput): ValidationRes
       amountToCollect: amount.value,
       comment: comment.value,
       metadata,
-      proofMode: "QR",
+      proofMode: resolvedProofMode,
     },
   };
 }
@@ -931,6 +947,9 @@ const PROOF_METHOD_LABELS: Record<string, string> = {
   QR_OTP: "QR code + OTP",
   OTP: "Code OTP",
   MANUAL: "Validation manuelle",
+  QR_PHOTO: "QR code + Photo",
+  QR_PHOTO_SIGNATURE: "Maximal (Photo + Signature)",
+  REVERSE_QR: "QR code inversé (destinataire)",
 };
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -1133,6 +1152,60 @@ export function describeDeliveryEvent(
         label: "Alerte : même appareil client réutilisé",
         summary: "Même empreinte utilisée sur plusieurs livraisons du livreur",
       };
+
+    case "PAYMENT_COLLECTED": {
+      const amount = typeof payload?.amountCollected === "number" ? payload.amountCollected : null;
+      const method = cleanText(payload?.paymentMethod);
+      return {
+        label: "Paiement encaissé",
+        summary:
+          amount !== null
+            ? `${amount.toLocaleString("fr-FR")} F CFA${method ? ` via ${method}` : ""}`
+            : null,
+      };
+    }
+
+    case "CASH_HANDED_OVER": {
+      const handed = typeof payload?.handedOverAmount === "number" ? payload.handedOverAmount : null;
+      const disc = typeof payload?.discrepancy === "number" ? payload.discrepancy : 0;
+      return {
+        label: "Remise d'espèces au dépôt",
+        summary:
+          handed !== null
+            ? `${handed.toLocaleString("fr-FR")} F CFA remis${disc !== 0 ? ` (Écart : ${disc} F)` : " (Caisse conforme)"}`
+            : null,
+      };
+    }
+
+    case "REVERSE_QR_SCANNED":
+      return {
+        label: "QR code destinataire validé",
+        summary: "Scan du QR inversé présenté par le destinataire",
+      };
+
+    case "DELIVERY_COMMENT_ADDED": {
+      const author = cleanText(payload?.authorName) ?? "Utilisateur";
+      return {
+        label: "Commentaire ajouté",
+        summary: `Par ${author}`,
+      };
+    }
+
+    case "DISPUTE_OPENED": {
+      const reason = cleanText(payload?.reason) ?? "Non précisé";
+      return {
+        label: "Litige ouvert",
+        summary: `Motif : ${reason}`,
+      };
+    }
+
+    case "DISPUTE_RESOLVED": {
+      const status = cleanText(payload?.status) ?? "Clôturé";
+      return {
+        label: "Litige résolu",
+        summary: `Statut final : ${status}`,
+      };
+    }
 
     default: {
       if (ev.toStatus && ev.toStatus in DELIVERY_STATUS_LABEL) {
@@ -1397,6 +1470,100 @@ export async function generateDeliveryLabelPdf(
 
   return {
     filename: `bordereau-${safeRef}.pdf`,
+    pdf,
+    reference: row.delivery.reference,
+  };
+}
+
+/** Génère le dossier de preuve complet certifié (PDF 1.4) avec chaîne d'audit et horodatage. */
+export async function generateProofDossierPdf(
+  db: Executor,
+  actor: EnterpriseCaller,
+  deliveryId: string,
+): Promise<{ filename: string; pdf: Uint8Array; reference: string }> {
+  if (!UUID_RE.test(deliveryId)) {
+    throw new DeliveryError("NOT_FOUND", "Livraison introuvable.");
+  }
+
+  const keyEnvFilter = isApiKeyCaller(actor) ? [eq(deliveries.isTest, actor.isTest)] : [];
+
+  const [row] = await db
+    .select({
+      delivery: deliveries,
+      companyName: companies.name,
+      courierName: couriers.name,
+      courierPhone: couriers.phone,
+    })
+    .from(deliveries)
+    .innerJoin(companies, eq(deliveries.companyId, companies.id))
+    .leftJoin(couriers, eq(deliveries.courierId, couriers.id))
+    .where(tenantScope(db, actor.companyId).filter(deliveries, eq(deliveries.id, deliveryId), ...keyEnvFilter))
+    .limit(1);
+
+  if (!row) {
+    throw new DeliveryError("NOT_FOUND", "Livraison introuvable.");
+  }
+
+  const decision = can(toPermissionActor(actor), "delivery.generatePdf", {
+    companyId: row.delivery.companyId,
+    status: row.delivery.status,
+    courierId: row.delivery.courierId,
+  });
+  if (!decision.allowed) {
+    throw new DeliveryError("FORBIDDEN", "Vous n'avez pas accès au dossier de preuve de cette livraison.");
+  }
+
+  // Récupérer les événements d'audit pour le dossier
+  const events = await db
+    .select({
+      id: auditEvents.id,
+      eventType: auditEvents.eventType,
+      actorType: auditEvents.actorType,
+      actorId: auditEvents.actorId,
+      serverTime: auditEvents.serverTime,
+      hash: auditEvents.hash,
+      prevHash: auditEvents.prevHash,
+      lat: auditEvents.lat,
+      lng: auditEvents.lng,
+      ip: auditEvents.ip,
+    })
+    .from(auditEvents)
+    .where(tenantScope(db, actor.companyId).filter(auditEvents, eq(auditEvents.deliveryId, deliveryId)))
+    .orderBy(asc(auditEvents.serverTime));
+
+  const safeRef =
+    row.delivery.reference
+      .replace(/[^a-zA-Z0-9_-]+/g, "-")
+      .replace(/^-+|-+$/g, "") || row.delivery.id;
+
+  const pdf = renderProofDossierPdf({
+    id: row.delivery.id,
+    companyName: row.companyName,
+    reference: row.delivery.reference,
+    status: row.delivery.status,
+    proofMethod: row.delivery.proofMethod,
+    proofMode: row.delivery.proofMode,
+    recipientName: row.delivery.recipientName,
+    recipientPhone: row.delivery.recipientPhone,
+    address: row.delivery.address,
+    district: row.delivery.district,
+    packageDescription: row.delivery.packageDescription,
+    amountToCollect: row.delivery.amountToCollect,
+    amountCollected: row.delivery.amountCollected,
+    paymentMethod: row.delivery.paymentMethod,
+    paymentReference: row.delivery.paymentReference,
+    deliveredAt: row.delivery.deliveredAt,
+    courierName: row.courierName,
+    courierPhone: row.courierPhone,
+    clientLat: null,
+    clientLng: null,
+    clientAccuracy: null,
+    clientIp: null,
+    events,
+  });
+
+  return {
+    filename: `preuve-${safeRef}.pdf`,
     pdf,
     reference: row.delivery.reference,
   };

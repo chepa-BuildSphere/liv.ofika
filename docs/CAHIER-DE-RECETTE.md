@@ -26,18 +26,19 @@
 > 2. Noter la référence exacte du test (ex. : Module 1 - Test 1.2).
 > 3. Consigner l'incident dans le document de suivi BUGS_ET_AMELIORATIONS avec la capture.
 
-## Répertoire des comptes de test
+## Répertoire des comptes de test prêts à l'emploi
+
+Ces comptes ont été pré-configurés sur la base de test Neon pour permettre une recette immédiate :
 
 | Profil | Nom / Fonction | E-mail / Identifiant | Mot de passe / PIN | Téléphone | Rôle & Espace |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| 1 | Admin plateforme de recette | À FOURNIR | À FOURNIR | Aucun | Back-office plateforme (`npm run admin:create`) |
-| 2 | Awa Koné, gérante de « Boutique Awa Recette » | awa.recette@ofika.test | Awa-Recette-2026 (Test 3.4) | +225 07 07 07 07 07 | Admin entreprise (créé au Module 2) |
-| 3 | Kofi Yao, gestionnaire chez « Boutique Awa Recette » | kofi.recette@ofika.test | Kofi-Recette-2026 (Test 5.3) | +225 05 05 05 05 05 | Gestionnaire et Responsable retours (Module 5) |
-| 4 | Aya Traoré, responsable retours chez « Boutique Awa Recette » | aya.recette@ofika.test | Aya-Recette-2026 (Test 5.4) | Aucun | Responsable retours (créé au Module 5) |
-| 5 | Moussa Diallo, gérant de « Maquis Moussa Recette » | moussa.recette@ofika.test | Moussa-Recette-2026 (Test 2.8) | +225 01 01 01 01 01 | Admin entreprise seconde société (Module 2) |
-| 6 | Kouassi Paul, livreur salarié « Boutique Awa Recette » | 07 10 10 10 10 | PIN 123456 (Module 12) | +225 07 10 10 10 10 | Livreur PWA (`/courier`) |
-| 7 | Diallo Sekou, coursier indépendant partenaire | 05 20 20 20 20 | PIN 654321 (Module 12) | +225 05 20 20 20 20 | Livreur PWA (`/courier`) |
-| 8 | Marcelle Bamba, gérante « Super Marché Cocody » | marcelle.cocody@ofika.test | Marcelle-Cocody-2026 (Module 11) | +225 07 88 88 88 88 | Admin entreprise (Auto-inscription `/register`) |
+| 1 | Super Admin Plateforme | `admin.recette@ofika.test` | `i_QzPH8yeKc2GVCs_H92l4VI` | Aucun | Back-office plateforme (`/admin/login`) |
+| 2 | Awa Touré, Admin Entreprise (« Test E2E (dev) ») | `awa.e2e@ofika.test` | `Ofika-Test-2026!` | +225 07 01 02 03 04 | Admin entreprise (`/login` ou `/connexion`) |
+| 3 | Koffi N'Goran, Gestionnaire (« Test E2E (dev) ») | `kofi.e2e@ofika.test` | `Ofika-Test-2026!` | +225 07 05 06 07 08 | Gestionnaire et Resp. retours (`/login`) |
+| 4 | Kwamé Test, Livreur salarié rattaché | `07 11 22 33 44` | PIN : `123456` | +225 07 11 22 33 44 | PWA Livreur (`/courier` ou `/livreur`) |
+| 5 | Aya Traoré (À créer au Module 5) | `aya.recette@ofika.test` | `Aya-Recette-2026` | Aucun | Responsable retours (Module 5) |
+| 6 | Moussa Diallo (À créer au Module 2) | `moussa.recette@ofika.test` | `Moussa-Recette-2026` | +225 01 01 01 01 01 | Admin 2nde entreprise (Test cloisonnement) |
+| 7 | Marcelle Bamba (À tester au Module 11) | `marcelle.cocody@ofika.test` | `Marcelle-Cocody-2026` | +225 07 88 88 88 88 | Auto-inscription entreprise (`/register`) |
 
 Préparation avant la recette : le responsable démarre l'application (npm run dev), vérifie que http://localhost:5000/admin/login s'ouvre, et remet aux testeurs l'e-mail et le mot de passe du compte 1. Les comptes 2 à 5 n'existent pas encore : ils sont créés par les tests eux-mêmes. Si la recette est rejouée, ajouter un suffixe aux e-mails (awa.recette2@ofika.test…), car un e-mail ne peut servir qu'une fois.
 
@@ -328,7 +329,81 @@ Pré-requis du module : être connecté avec un compte administrateur entreprise
 | | | |
 | **Décision finale :** | [ ] **Conforme** | [ ] **Non Conforme** |
 
-## Matrice de couverture globale (17 Modules)
+## Module 18 : Niveaux de Preuve Configurables & Preuves Visuelles (MVP 1)
+
+Pré-requis du module : être connecté avec un compte entreprise (`/espace/livraisons`) et disposer d'un compte coursier rattaché sur PWA (`/livreur`).
+
+| N° | Priorité | Intitulé du Test | Scénario pas-à-pas | Résultat attendu | Validation |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 18.1 | P1 | Sélection du niveau de preuve à la création d'un colis | 1. Aller sur `/espace/livraisons`. 2. Ouvrir le formulaire de création manuelle. 3. Dérouler le champ « Niveau de preuve demandé ». | Les options suivantes sont proposées : Standard (QR + code), Renforcé (QR + OTP), Renforcé + Photo (`QR_PHOTO`), Maximal (`QR_PHOTO_SIGNATURE`), QR Inversé (`REVERSE_QR`). Sélectionner `QR_PHOTO` et créer le colis. | [ ] OK [ ] KO [ ] NA |
+| 18.2 | P1 | Blocage de validation sans photo obligatoire sur PWA Livreur | 1. Sur la PWA livreur `/livreur`, prendre en charge le colis créé en 18.1. 2. Déclarer « Arrivé ». 3. Tenter de valider la remise par code à 4 chiffres sans joindre de photo. | La validation est bloquée : un message clair avertit le coursier que la photo du colis remis est obligatoire pour ce niveau de preuve. | [ ] OK [ ] KO [ ] NA |
+| 18.3 | P1 | Validation réussie avec compression photo & affichage entreprise | 1. Cliquer sur « Prendre la photo du colis », sélectionner une image de test. 2. Observer la compression automatique. 3. Saisir le code à 4 chiffres et valider. 4. Côté entreprise, ouvrir la fiche `/espace/livraisons/[id]`. | La livraison passe à « Livré ». La photo compressée s'affiche distinctement dans la section « Preuves de Remise Certifiées » avec horodatage et niveau `QR_PHOTO`. | [ ] OK [ ] KO [ ] NA |
+
+| Nom du Testeur | Date | Commentaires & Remarques |
+| :--- | :--- | :--- |
+| | | |
+| **Décision finale :** | [ ] **Conforme** | [ ] **Non Conforme** |
+
+## Module 19 : QR Inversé (Validation avec QR Destinataire - MVP 1)
+
+Pré-requis du module : livraison créée avec le mode de preuve `REVERSE_QR`.
+
+| N° | Priorité | Intitulé du Test | Scénario pas-à-pas | Résultat attendu | Validation |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 19.1 | P1 | Génération et affichage du QR Destinataire | 1. Créer une livraison avec mode « QR Inversé ». 2. Ouvrir le lien de suivi destinataire `/c/[token]`. | Un QR code sécurisé s'affiche pour le client avec la mention « Présentez ce QR au livreur à la réception de votre commande ». | [ ] OK [ ] KO [ ] NA |
+| 19.2 | P1 | Scan / saisie du QR destinataire par le livreur sur la PWA | 1. Sur `/livreur`, ouvrir le colis. 2. Basculer sur l'onglet « 2. QR Destinataire (Inversé) ». 3. Saisir ou scanner la charge utile `OFIKA-REV:[REF]:[TOKEN]`. 4. Valider la remise. | La remise est instantanément certifiée et la livraison bascule au statut « Livré » avec la méthode `REVERSE_QR`. | [ ] OK [ ] KO [ ] NA |
+| 19.3 | P1 | Détection d'altération et protection anti-fraude | 1. Tenter de valider avec une charge altérée (ex. modifier un caractère du jeton ou une référence discordante). | Le système rejette la validation avec une alerte explicite : format invalide ou référence discordante. | [ ] OK [ ] KO [ ] NA |
+
+| Nom du Testeur | Date | Commentaires & Remarques |
+| :--- | :--- | :--- |
+| | | |
+| **Décision finale :** | [ ] **Conforme** | [ ] **Non Conforme** |
+
+## Module 20 : Encaissements COD & Rapprochement de Caisse Dépôt (MVP 1)
+
+Pré-requis du module : être connecté avec un compte Admin ou Gestionnaire sur `/espace/encaissements`.
+
+| N° | Priorité | Intitulé du Test | Scénario pas-à-pas | Résultat attendu | Validation |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 20.1 | P1 | Déclaration de paiement COD lors de la remise | 1. Lors de la livraison d'un colis avec COD (ex : 25 000 F CFA), sélectionner le mode de règlement (Espèces, Wave, Orange Money) et saisir le montant perçu. 2. Valider la remise. | L'événement d'audit `PAYMENT_COLLECTED` est scellé dans le journal avec le mode et le montant perçu. | [ ] OK [ ] KO [ ] NA |
+| 20.2 | P1 | Suivi du solde espèces en poche par livreur | 1. Accéder à l'espace `/espace/encaissements`. 2. Consulter la carte du livreur ayant effectué la livraison en espèces. | Le solde « Espèces en poche » reflète exactement la somme collectée en attente de versement au dépôt. | [ ] OK [ ] KO [ ] NA |
+| 20.3 | P1 | Rapprochement de caisse et validation du versement physique | 1. Cliquer sur « Enregistrer une remise ». 2. Indiquer le montant remis physiquement par le livreur au caissier/gestionnaire (ex : 25 000 F). 3. Valider. | Le versement est enregistré avec l'écart constaté (0 F en cas d'exactitude). Le solde en poche du livreur est réinitialisé à 0 F. L'événement d'audit `CASH_HANDED_OVER` est scellé. | [ ] OK [ ] KO [ ] NA |
+
+| Nom du Testeur | Date | Commentaires & Remarques |
+| :--- | :--- | :--- |
+| | | |
+| **Décision finale :** | [ ] **Conforme** | [ ] **Non Conforme** |
+
+## Module 21 : Fil de Discussion & Gestion des Litiges (MVP 1)
+
+Pré-requis du module : livraison existante dans l'espace entreprise (`/espace/livraisons/[id]`).
+
+| N° | Priorité | Intitulé du Test | Scénario pas-à-pas | Résultat attendu | Validation |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 21.1 | P2 | Ajout d'un commentaire opérationnel sur une livraison | 1. Sur la page détail de la livraison, section « Commentaires & Échanges », saisir « Colis fragile, remis en mains propres au bureau 204. » 2. Cliquer sur « Envoyer ». | Le message apparaît instantanément dans le fil avec l'auteur, le rôle, la date et l'heure. Toute balise HTML ou script XSS est automatiquement neutralisé. | [ ] OK [ ] KO [ ] NA |
+| 21.2 | P1 | Déclaration et ouverture d'un litige client | 1. Dans la section « Gestion des Litiges », cliquer sur « Déclarer un litige ». 2. Choisir le motif (ex : `PACKAGE_DAMAGED` ou `PAYMENT_DISCREPANCY`), saisir les détails et confirmer. | Le litige passe au statut « OPEN » avec badge d'alerte rouge. La livraison est marquée en litige actif. L'événement `DISPUTE_OPENED` est loggé dans l'audit. | [ ] OK [ ] KO [ ] NA |
+| 21.3 | P1 | Résolution d'un litige depuis le tableau de bord `/espace/litiges` | 1. Aller sur le menu « Litiges » (`/espace/litiges`). 2. Sélectionner le litige ouvert. 3. Saisir les notes de résolution (ex : « Colis remplacé le lendemain avec accord client ») et cliquer sur « Marquer comme résolu ». | Le litige bascule au statut vert « RESOLVED », avec consignation de l'auteur de la clôture et archivage des notes. | [ ] OK [ ] KO [ ] NA |
+
+| Nom du Testeur | Date | Commentaires & Remarques |
+| :--- | :--- | :--- |
+| | | |
+| **Décision finale :** | [ ] **Conforme** | [ ] **Non Conforme** |
+
+## Module 22 : Dossier de Preuve PDF Cryptographique & Certificat de Non-Répudiation (MVP 1)
+
+Pré-requis du module : livraison au statut « Livré » (`DELIVERED`).
+
+| N° | Priorité | Intitulé du Test | Scénario pas-à-pas | Résultat attendu | Validation |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 22.1 | P1 | Téléchargement du Dossier de Preuve PDF officiel | 1. Ouvrir une livraison livrée sur `/espace/livraisons/[id]`. 2. Cliquer sur le bouton « Télécharger le Dossier de Preuve (PDF) ». | Le fichier `preuve-[reference].pdf` se télécharge automatiquement avec les en-têtes officiels (`application/pdf`). | [ ] OK [ ] KO [ ] NA |
+| 22.2 | P1 | Vérification de la valeur probante et non-répudiation (Loi n° 2013-450) | 1. Ouvrir le document PDF téléchargé dans Acrobat Reader ou le navigateur. 2. Vérifier les sections : En-tête officiel, Identités, Géolocalisation GPS & IP, Détails d'encaissement COD, et la section « JOURNAL D'AUDIT CERTIFIE (CHAINE DE HASH SHA-256) ». | Le document PDF 1.4 A4 reproduit l'historique chronologique infalsifiable des événements horodatés en UTC avec leurs empreintes SHA-256 respectives et la mention légale de conformité. | [ ] OK [ ] KO [ ] NA |
+
+| Nom du Testeur | Date | Commentaires & Remarques |
+| :--- | :--- | :--- |
+| | | |
+| **Décision finale :** | [ ] **Conforme** | [ ] **Non Conforme** |
+
+## Matrice de couverture globale (22 Modules — MVP & MVP 1)
 
 | Module | Tests | dont P1 | Périmètre fonctionnel couvert |
 | :--- | :--- | :--- | :--- |
@@ -349,7 +424,12 @@ Pré-requis du module : être connecté avec un compte administrateur entreprise
 | **Module 15 : Échecs, Retours Dépôt & Forcer Livré** | **3** | **2** | **Déclaration échec, masquage téléphone, scan retour, décharge** |
 | **Module 16 : Facturation 10 F CFA & Pilotage Super Admin** | **3** | **2** | **Compteur facturable, gratuité retours, ON/OFF, relevé payé** |
 | **Module 17 : Clés API Développeur & Webhooks** | **2** | **0** | **Clés test/live, webhooks HMAC, test d'envoi en direct** |
-| **TOTAL GÉNÉRAL** | **79 tests** | **44 tests P1** | **Couverture intégrale du MVP Ofika Delivery de bout en bout** |
+| **Module 18 : Niveaux de Preuve Configurables (MVP 1)** | **3** | **3** | **Standard, Renforcé OTP, Photo, Signature, validation stricte** |
+| **Module 19 : QR Inversé Destinataire (MVP 1)** | **3** | **3** | **QR client `/c/[token]`, scan livreur, signature cryptographique** |
+| **Module 20 : Encaissements COD & Rapprochement (MVP 1)** | **3** | **3** | **Paiements à la livraison, espèces en poche, versement dépôt** |
+| **Module 21 : Commentaires & Litiges (MVP 1)** | **3** | **2** | **Fil entreprise-livreur, ouverture litige, résolution manager** |
+| **Module 22 : Dossier de Preuve PDF Cryptographique (MVP 1)**| **2** | **2** | **Certificat de non-répudiation, SHA-256 scellé, loi 2013-450** |
+| **TOTAL GÉNÉRAL** | **93 tests** | **57 tests P1** | **Couverture intégrale MVP & MVP 1 d'Ofika Delivery de bout en bout** |
 
 ## Annexe : Recommandations pour la mise en production
 

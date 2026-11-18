@@ -82,6 +82,11 @@ type ActionResources = {
   "audit.view": AuditRef;
   "audit.modify": AuditRef;
   "delivery.generatePdf": DeliveryRef;
+  // Actions MVP 1
+  "cash.reconcile": CompanyRef;
+  "cash.viewHandovers": CompanyRef;
+  "dispute.manage": DeliveryRef;
+  "delivery.comment": DeliveryRef;
 };
 
 export type Action = keyof ActionResources;
@@ -235,6 +240,14 @@ const MATRIX: { [A in Action]: Rule<ActionResources[A]> } = {
   "audit.modify": nobody, // règle 4
 
   "delivery.generatePdf": anyOf(userWith(ADMIN_MANAGER), ownCourier, apiKeyOfCompany),
+
+  // MVP 1 : Rapprochement de caisse réservé Admin et Gestionnaire
+  "cash.reconcile": userWith(ADMIN_MANAGER),
+  "cash.viewHandovers": anyOf(platformSupport, userWith(ADMIN_MANAGER)),
+  // MVP 1 : Gestion des litiges (Admin & Gestionnaire)
+  "dispute.manage": userWith(ADMIN_MANAGER),
+  // MVP 1 : Commentaires sur livraison (Admin, Gestionnaire et livreur affecté)
+  "delivery.comment": anyOf(userWith(ADMIN_MANAGER), ownCourier),
 };
 
 export const ACTIONS = Object.keys(MATRIX) as Action[];
