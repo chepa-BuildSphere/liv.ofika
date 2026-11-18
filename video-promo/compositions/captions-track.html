@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          pointer-events: none;
+          font-family: Inter, system-ui, -apple-system, sans-serif;
+        }
+        .cap-group {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          align-items: flex-end;
+          justify-content: center;
+          padding: 0 192px 42px 192px;
+          pointer-events: none;
+        }
+        .cap-pill {
+          display: inline-block;
+          height: auto;
+          max-width: 1340px;
+          padding: 12px 30px;
+          border-radius: 999px;
+          background: rgba(10, 10, 10, 0.88);
+          border: 1.5px solid rgba(255, 255, 255, 0.22);
+          color: #ffffff;
+          font-size: 26px;
+          font-weight: 700;
+          line-height: 1.3;
+          text-align: center;
+          box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+        }
+        .cap-accent {
+          color: #fb923c;
+          font-weight: 900;
+        }
+        .cap-green {
+          color: #4ade80;
+          font-weight: 900;
+        }
+      </style>
+
+      <div id="root" data-composition-id="captions-track" data-width="1920" data-height="1080">
+        <div id="cap-1" class="clip cap-group" data-start="0.10" data-duration="4.15">
+          <div class="cap-pill">
+            À Abidjan, quand tu vends en ligne, <span class="cap-accent">les palabres de livraison là, ça fatigue !</span>
+          </div>
+        </div>
+
+        <div id="cap-2" class="clip cap-group" data-start="4.35" data-duration="4.65">
+          <div class="cap-pill">
+            Aujourd&apos;hui c&apos;est fini ! Avec <span class="cap-accent">Ofika Delivery</span>, de Cocody à Yopougon, tout est calé.
+          </div>
+        </div>
+
+        <div id="cap-3" class="clip cap-group" data-start="9.15" data-duration="4.45">
+          <div class="cap-pill">
+            Le livreur donne son <span class="cap-accent">QR code</span>, le client le scanne et donne le <span class="cap-accent">code généré</span> au livreur.
+          </div>
+        </div>
+
+        <div id="cap-4" class="clip cap-group" data-start="13.75" data-duration="3.25">
+          <div class="cap-pill">
+            <span class="cap-green">Seulement 10 francs</span> par livraison validée, zéro abonnement !
+          </div>
+        </div>
+
+        <div id="cap-5" class="clip cap-group" data-start="17.15" data-duration="2.65">
+          <div class="cap-pill">
+            Crée ton compte gratuit maintenant sur <span class="cap-accent">Ofika Delivery</span> !
+          </div>
+        </div>
+      </div>
+
+      <script>
+        const tl = gsap.timeline({ paused: true });
+        window.__timelines["captions-track"] = tl;
+      </script>
+    </template>
+  </body>
+</html>

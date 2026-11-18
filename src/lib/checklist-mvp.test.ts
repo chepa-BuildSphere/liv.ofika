@@ -7,6 +7,7 @@ import { buildReferenceQrPayload, encodeQrMatrix } from "@/lib/qr/qr-matrix";
 import { renderDeliveryLabelPdf } from "@/lib/deliveries/label-pdf";
 import { computeNextRetryAt, verifyWebhookSignature, signWebhookPayload } from "@/lib/webhooks/webhooks";
 import { QUICKSTART_15_MINUTES, V1_ENDPOINTS_DOCS } from "@/lib/api-keys/developer-docs";
+import { OFIKA_OPENAPI_SPEC } from "@/lib/api-keys/openapi-spec";
 
 describe("Checklist MVP §13 — Validation complète (Phase 9 — Tâche 9.1)", () => {
   it("Critère 1 : Matrice de permissions — cloisonnement et rôles d'entreprise", () => {
@@ -195,9 +196,12 @@ describe("Checklist MVP §13 — Validation complète (Phase 9 — Tâche 9.1)",
     expect(header).toBe("%PDF-");
   });
 
-  it("Critère 26 : Documentation développeur complète (guide 15 min & 11 endpoints)", () => {
+  it("Critère 26 : Documentation développeur complète (guide 15 min, 11 endpoints & OpenAPI 3.1 Scalar)", () => {
     expect(QUICKSTART_15_MINUTES.length).toBe(4);
     expect(V1_ENDPOINTS_DOCS.length).toBe(11);
     expect(V1_ENDPOINTS_DOCS.some((ep) => ep.path === "/v1/test/deliveries/{id}/simulate")).toBe(true);
+    expect(OFIKA_OPENAPI_SPEC.openapi).toBe("3.1.0");
+    expect(Object.keys(OFIKA_OPENAPI_SPEC.paths)).toContain("/v1/deliveries");
+    expect(Object.keys(OFIKA_OPENAPI_SPEC.paths)).toContain("/v1/test/deliveries/{id}/simulate");
   });
 });

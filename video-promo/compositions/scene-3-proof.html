@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          background: #fbfbfa;
+          color: #111111;
+          font-family: Inter, system-ui, -apple-system, sans-serif;
+        }
+        #s3-ambient {
+          position: absolute;
+          inset: 0;
+          background: radial-gradient(circle at 75% 20%, rgba(194, 65, 12, 0.1) 0%, transparent 65%);
+        }
+        #s3-safe-wrap {
+          position: absolute;
+          top: 108px;
+          left: 192px;
+          right: 192px;
+          bottom: 145px;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          gap: 44px;
+          z-index: 5;
+        }
+        #s3-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+        #s3-kicker {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          padding: 8px 20px;
+          border-radius: 999px;
+          background: #fff7ed;
+          border: 1.5px solid #fed7aa;
+          color: #c2410c;
+          font-size: 19px;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
+        }
+        #s3-main-title {
+          margin: 14px 0 0 0;
+          font-size: 52px;
+          font-weight: 900;
+          letter-spacing: -0.03em;
+          color: #0a0a0a;
+        }
+        #s3-sealed-badge {
+          padding: 14px 26px;
+          border-radius: 999px;
+          background: #15803d;
+          color: #ffffff;
+          font-size: 22px;
+          font-weight: 900;
+          letter-spacing: 0.04em;
+          box-shadow: 0 12px 30px rgba(21, 128, 61, 0.3);
+        }
+        #s3-cards-grid {
+          display: grid;
+          grid-template-columns: 1fr 1.15fr 1fr;
+          gap: 28px;
+          align-items: stretch;
+        }
+        .s3-card {
+          background: #ffffff;
+          border-radius: 22px;
+          border: 2px solid #eaeaea;
+          padding: 28px;
+          box-shadow: 0 18px 45px rgba(0, 0, 0, 0.06);
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+        }
+        #s3-card-price {
+          border-color: #15803d;
+          background: #f0fdf4;
+        }
+        .s3-step-num {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 48px;
+          height: 48px;
+          border-radius: 14px;
+          background: #111111;
+          color: #ffffff;
+          font-family: "JetBrains Mono", monospace;
+          font-size: 22px;
+          font-weight: 900;
+        }
+        #s3-step-num-2 {
+          background: #c2410c;
+        }
+        #s3-step-num-3 {
+          background: #15803d;
+        }
+        .s3-card-title {
+          margin: 18px 0 8px 0;
+          font-size: 29px;
+          font-weight: 900;
+          color: #111111;
+        }
+        .s3-card-desc {
+          margin: 0;
+          font-size: 20px;
+          line-height: 1.4;
+          color: #52525b;
+          font-weight: 500;
+        }
+        #s3-gps-chip {
+          margin-top: 22px;
+          padding: 14px 18px;
+          border-radius: 14px;
+          background: #fff7ed;
+          border: 1.5px solid #fed7aa;
+          font-family: "JetBrains Mono", monospace;
+          font-size: 19px;
+          font-weight: 800;
+          color: #c2410c;
+        }
+        #s3-code-row {
+          margin-top: 20px;
+          display: flex;
+          gap: 12px;
+          justify-content: center;
+        }
+        .s3-digit-box {
+          width: 66px;
+          height: 76px;
+          border-radius: 14px;
+          background: #111111;
+          color: #ffffff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-family: "JetBrains Mono", monospace;
+          font-size: 38px;
+          font-weight: 900;
+          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+        }
+        #s3-big-price {
+          margin-top: 12px;
+          font-size: 64px;
+          font-weight: 900;
+          line-height: 1;
+          letter-spacing: -0.04em;
+          color: #15803d;
+        }
+        #s3-price-unit {
+          margin-top: 6px;
+          font-size: 24px;
+          font-weight: 800;
+          color: #111111;
+        }
+        #s3-perks-list {
+          margin-top: 16px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          font-size: 20px;
+          font-weight: 700;
+          color: #166534;
+        }
+      </style>
+
+      <div id="root" data-composition-id="scene-3-proof" data-width="1920" data-height="1080">
+        <div id="s3-ambient"></div>
+
+        <div id="s3-safe-wrap">
+          <div id="s3-header">
+            <div>
+              <div id="s3-kicker">PREUVE BILATÉRALE INFALSIFIABLE</div>
+              <h2 id="s3-main-title">3 secondes sur le terrain, zéro contestation</h2>
+            </div>
+            <div id="s3-sealed-badge">✓ LIVRÉE · PREUVE CERTIFIÉE</div>
+          </div>
+
+          <div id="s3-cards-grid">
+            <!-- Étape 1 : Pointage GPS -->
+            <div id="s3-card-gps" class="s3-card">
+              <div>
+                <span class="s3-step-num">01</span>
+                <h3 class="s3-card-title">Pointage GPS Certifié</h3>
+                <p class="s3-card-desc">
+                  Devant le portail, le livreur clique sur « Arrivé » dans Chrome. Sa position exacte est scellée.
+                </p>
+              </div>
+              <div id="s3-gps-chip">📍 Cocody Ambassades (±12 m)</div>
+            </div>
+
+            <!-- Étape 2 : Scan QR + Code 4 chiffres -->
+            <div id="s3-card-qr" class="s3-card">
+              <div>
+                <span id="s3-step-num-2" class="s3-step-num">02</span>
+                <h3 class="s3-card-title">Scan QR &amp; Code Secret</h3>
+                <p class="s3-card-desc">
+                  Le client scanne le QR code temporaire (3 min) et dicte son code à 4 chiffres au livreur.
+                </p>
+              </div>
+              <div id="s3-code-row">
+                <div id="s3-d1" class="s3-digit-box">4</div>
+                <div id="s3-d2" class="s3-digit-box">8</div>
+                <div id="s3-d3" class="s3-digit-box">2</div>
+                <div id="s3-d4" class="s3-digit-box">9</div>
+              </div>
+            </div>
+
+            <!-- Étape 3 : Tarif 10 F par livraison validée -->
+            <div id="s3-card-price" class="s3-card">
+              <div>
+                <span id="s3-step-num-3" class="s3-step-num">03</span>
+                <div id="s3-big-price">10 F CFA</div>
+                <div id="s3-price-unit">par livraison validée</div>
+              </div>
+              <div id="s3-perks-list">
+                <div>✓ 0 F d&apos;abonnement mensuel</div>
+                <div>✓ 0 F sur les échecs et retours</div>
+                <div>✓ Livreurs &amp; utilisateurs illimités</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        const tl = gsap.timeline({ paused: true });
+
+        tl.fromTo(
+          "#s3-kicker, #s3-main-title",
+          { y: 28, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.45, stagger: 0.1, ease: "power3.out" },
+          0.05
+        );
+
+        tl.fromTo(
+          "#s3-card-gps",
+          { y: 60, opacity: 0, scale: 0.94 },
+          { y: 0, opacity: 1, scale: 1, duration: 0.55, ease: "power3.out" },
+          0.2
+        );
+
+        tl.fromTo(
+          "#s3-gps-chip",
+          { scale: 0.85, opacity: 0 },
+          { scale: 1, opacity: 1, duration: 0.4, ease: "back.out(1.7)" },
+          0.7
+        );
+
+        tl.fromTo(
+          "#s3-card-qr",
+          { y: 60, opacity: 0, scale: 0.94 },
+          { y: 0, opacity: 1, scale: 1, duration: 0.55, ease: "power3.out" },
+          1.4
+        );
+
+        tl.fromTo(
+          ".s3-digit-box",
+          { y: 26, scale: 0.7, opacity: 0 },
+          { y: 0, scale: 1, opacity: 1, duration: 0.32, stagger: 0.14, ease: "back.out(2)" },
+          2.1
+        );
+
+        tl.fromTo(
+          "#s3-card-price",
+          { y: 60, opacity: 0, scale: 0.92 },
+          { y: 0, opacity: 1, scale: 1, duration: 0.6, ease: "back.out(1.5)" },
+          3.9
+        );
+
+        tl.fromTo(
+          "#s3-sealed-badge",
+          { scale: 0.75, opacity: 0 },
+          { scale: 1, opacity: 1, duration: 0.45, ease: "back.out(1.8)" },
+          4.4
+        );
+
+        window.__timelines["scene-3-proof"] = tl;
+      </script>
+    </template>
+  </body>
+</html>

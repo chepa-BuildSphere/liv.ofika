@@ -10,12 +10,14 @@ import {
 } from "@/lib/api-keys/developer-docs";
 import { requireUser } from "@/lib/auth/user-session";
 import { WEBHOOK_EVENT_LABELS, WEBHOOK_EVENT_TYPES } from "@/lib/webhooks/webhook-types";
+import { ChevronRightIcon, KeyIcon } from "@/components/icons";
+import { ScalarDocsClient } from "./scalar-docs-client";
 
-export const metadata: Metadata = { title: "Documentation API — Ofika Delivery" };
+export const metadata: Metadata = { title: "Documentation API Scalar — Ofika Delivery" };
 
 export default function DocumentationPage() {
   return (
-    <Suspense fallback={<p className="text-sm text-ink-muted">Chargement de la documentation…</p>}>
+    <Suspense fallback={<p className="text-sm text-ink-muted">Chargement de la documentation Scalar…</p>}>
       <DocumentationContent />
     </Suspense>
   );
@@ -24,20 +26,8 @@ export default function DocumentationPage() {
 async function DocumentationContent() {
   await requireUser();
 
-  return (
-    <div className="space-y-10">
-      <div>
-        <Link href="/espace" className="text-sm text-ink-muted hover:underline">
-          ← Accueil
-        </Link>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight">
-          Documentation développeur &amp; Guide « Brancher mon site en 15 minutes »
-        </h1>
-        <p className="mt-2 text-sm text-ink-muted">
-          Tout ce qu&apos;il faut pour créer vos livraisons par API REST et recevoir les notifications signées en temps réel.
-        </p>
-      </div>
-
+  const guideContent = (
+    <div className="space-y-8">
       <section aria-label="Brancher mon site en 15 minutes" className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-lg font-semibold">Brancher mon site en 15 minutes</h2>
@@ -174,6 +164,58 @@ async function DocumentationContent() {
           </table>
         </div>
       </section>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Fil d'ariane */}
+      <nav aria-label="Fil d'ariane" className="flex items-center gap-2 text-xs text-[#787774]">
+        <Link href="/dashboard" className="hover:text-[#111111] transition-colors">
+          Tableau de bord
+        </Link>
+        <ChevronRightIcon className="h-3.5 w-3.5" />
+        <span className="font-semibold text-[#111111]">Documentation API (Scalar)</span>
+      </nav>
+
+      {/* En-tête */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#EAEAEA] pb-5">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#111111] text-white">
+            <KeyIcon className="h-5 w-5" />
+          </span>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-extrabold tracking-tight text-[#111111]">
+                Documentation API — Scalar OpenAPI 3.1
+              </h1>
+              <span className="rounded-full border border-[#C2410C]/20 bg-[#FFF7ED] px-2.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-[#C2410C]">
+                v1.0
+              </span>
+            </div>
+            <p className="mt-0.5 text-xs text-[#787774]">
+              Explorez et testez en direct les 11 endpoints REST `/v1/*` et les webhooks signés d&apos;Ofika Delivery avec Scalar.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <Link
+            href="/espace/cles-api"
+            className="inline-flex h-9 items-center rounded-lg border border-[#EAEAEA] bg-white px-3 font-semibold text-[#111111] hover:border-[#111111] transition-colors"
+          >
+            Mes clés API
+          </Link>
+          <Link
+            href="/espace/webhooks"
+            className="inline-flex h-9 items-center rounded-lg border border-[#EAEAEA] bg-white px-3 font-semibold text-[#111111] hover:border-[#111111] transition-colors"
+          >
+            Mes webhooks
+          </Link>
+        </div>
+      </div>
+
+      <ScalarDocsClient guideContent={guideContent} />
     </div>
   );
 }

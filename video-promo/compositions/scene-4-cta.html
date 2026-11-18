@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          background: #ffffff;
+          color: #0a0a0a;
+          font-family: Inter, system-ui, -apple-system, sans-serif;
+        }
+        #s4-glow {
+          position: absolute;
+          inset: 0;
+          background:
+            radial-gradient(circle at 50% 42%, rgba(194, 65, 12, 0.14) 0%, rgba(255, 247, 237, 0) 65%);
+        }
+        #s4-center-stage {
+          position: absolute;
+          top: 108px;
+          left: 192px;
+          right: 192px;
+          bottom: 145px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          z-index: 5;
+        }
+        #s4-logo-lockup {
+          display: inline-flex;
+          align-items: center;
+          gap: 22px;
+          padding: 18px 36px;
+          border-radius: 26px;
+          background: #ffffff;
+          border: 2.5px solid #eaeaea;
+          box-shadow: 0 24px 60px rgba(194, 65, 12, 0.14);
+        }
+        #s4-logo-mark {
+          width: 78px;
+          height: 78px;
+          border-radius: 20px;
+          background: #0a0a0a;
+          color: #ffffff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 46px;
+          font-weight: 900;
+          position: relative;
+        }
+        #s4-logo-dot {
+          position: absolute;
+          right: 12px;
+          bottom: 12px;
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          background: #ea580c;
+        }
+        #s4-wordmark {
+          font-size: 74px;
+          font-weight: 900;
+          letter-spacing: -0.04em;
+          line-height: 1;
+          color: #0a0a0a;
+        }
+        #s4-wordmark-accent {
+          color: #c2410c;
+        }
+        #s4-tagline {
+          margin: 26px 0 0 0;
+          font-size: 40px;
+          font-weight: 800;
+          letter-spacing: -0.02em;
+          color: #111111;
+        }
+        #s4-sub {
+          margin: 12px 0 0 0;
+          font-size: 25px;
+          font-weight: 600;
+          color: #52525b;
+        }
+        #s4-cta-wrap {
+          margin-top: 32px;
+          position: relative;
+          display: inline-flex;
+          align-items: center;
+        }
+        #s4-cta-btn {
+          padding: 22px 48px;
+          border-radius: 16px;
+          background: #c2410c;
+          color: #ffffff;
+          font-size: 30px;
+          font-weight: 900;
+          letter-spacing: 0.02em;
+          box-shadow: 0 20px 45px rgba(194, 65, 12, 0.35);
+          display: inline-flex;
+          align-items: center;
+          gap: 16px;
+        }
+        #s4-cursor {
+          position: absolute;
+          right: -36px;
+          bottom: -32px;
+          width: 48px;
+          height: 48px;
+          z-index: 10;
+        }
+      </style>
+
+      <div id="root" data-composition-id="scene-4-cta" data-width="1920" data-height="1080">
+        <div id="s4-glow"></div>
+
+        <div id="s4-center-stage">
+          <div id="s4-logo-lockup">
+            <div id="s4-logo-mark">
+              <span>O</span>
+              <span id="s4-logo-dot"></span>
+            </div>
+            <div id="s4-wordmark">
+              Ofika <span id="s4-wordmark-accent">Delivery</span>
+            </div>
+          </div>
+
+          <h2 id="s4-tagline">
+            Fini les palabres · 10 F CFA par livraison validée
+          </h2>
+          <p id="s4-sub">
+            Inscription en 2 minutes · 0 F d&apos;abonnement · Aucune carte bancaire requise
+          </p>
+
+          <div id="s4-cta-wrap">
+            <div id="s4-cta-btn">
+              <span>Créer mon compte entreprise maintenant</span>
+              <span>→</span>
+            </div>
+            <svg id="s4-cursor" viewBox="0 0 36 36" fill="none">
+              <path
+                d="M6 4L29 15.5L18.5 19.5L14.5 30L6 4Z"
+                fill="#111111"
+                stroke="#FFFFFF"
+                stroke-width="2.5"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        const tl = gsap.timeline({ paused: true });
+
+        tl.fromTo(
+          "#s4-logo-lockup",
+          { scale: 0.72, y: 40, opacity: 0 },
+          { scale: 1, y: 0, opacity: 1, duration: 0.55, ease: "back.out(1.7)" },
+          0.05
+        );
+
+        tl.fromTo(
+          "#s4-tagline",
+          { y: 28, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.45, ease: "power3.out" },
+          0.3
+        );
+
+        tl.fromTo(
+          "#s4-sub",
+          { y: 20, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.4, ease: "power2.out" },
+          0.48
+        );
+
+        tl.fromTo(
+          "#s4-cta-btn",
+          { scale: 0.86, y: 24, opacity: 0 },
+          { scale: 1, y: 0, opacity: 1, duration: 0.5, ease: "back.out(1.6)" },
+          0.65
+        );
+
+        tl.fromTo(
+          "#s4-cursor",
+          { x: 140, y: 110, opacity: 0 },
+          { x: -18, y: -12, opacity: 1, duration: 0.45, ease: "power3.out" },
+          0.95
+        );
+
+        tl.to(
+          "#s4-cta-btn",
+          {
+            keyframes: [
+              { scale: 0.95, backgroundColor: "#9a3412", duration: 0.12, ease: "power2.in" },
+              { scale: 1.03, backgroundColor: "#c2410c", duration: 0.22, ease: "back.out(2)" }
+            ]
+          },
+          1.42
+        );
+
+        window.__timelines["scene-4-cta"] = tl;
+      </script>
+    </template>
+  </body>
+</html>

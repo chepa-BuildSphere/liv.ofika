@@ -2,12 +2,21 @@ import Link from "next/link";
 import Image from "next/image";
 import { Wordmark } from "@/components/wordmark";
 import { getCachedPlatformPrice } from "@/lib/billing/public-price";
-import { MinimalFaqAccordion, RevealOnScroll } from "./minimalist-home-client";
+import {
+  MinimalFaqAccordion,
+  RevealOnScroll,
+  DeveloperCodeShowcase,
+} from "./minimalist-home-client";
 import {
   CheckCircleIcon,
   PhoneIcon,
   BanknotesIcon,
   ArrowRightIcon,
+  KeyIcon,
+  CodeBracketIcon,
+  CommandLineIcon,
+  ShieldCheckIcon,
+  DocumentTextIcon,
 } from "@/components/icons";
 
 const TIMELINE_SAMPLE = [
@@ -117,6 +126,12 @@ export default async function Home() {
               className="hidden text-xs font-medium text-[#787774] transition-colors hover:text-[#111111] md:inline"
             >
               Tarifs
+            </a>
+            <a
+              href="#developers"
+              className="hidden text-xs font-medium text-[#787774] transition-colors hover:text-[#111111] md:inline"
+            >
+              Développeurs &amp; API
             </a>
             <Link
               href="/courier/login"
@@ -237,6 +252,36 @@ export default async function Home() {
                       </div>
                     </div>
                   </div>
+                </div>
+              </div>
+            </RevealOnScroll>
+
+            {/* ── 1-BIS. SPOT PUBLICITAIRE VIDÉO 20 SECONDES (AIDA · ABIDJAN) ── */}
+            <RevealOnScroll index={1} className="mt-14">
+              <div className="overflow-hidden rounded-[20px] border border-[#EAEAEA] bg-[#111111] p-3 sm:p-5 text-white shadow-[0_24px_60px_rgba(0,0,0,0.12)]">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2 px-1">
+                  <div className="flex items-center gap-2.5">
+                    <span className="inline-flex h-2.5 w-2.5 rounded-full bg-[#C2410C] animate-pulse" />
+                    <span className="font-mono text-xs font-bold uppercase tracking-wider text-[#FFEDD5]">
+                      Spot Publicitaire Officiel · 20 secondes (Abidjan)
+                    </span>
+                  </div>
+                  <span className="rounded-full border border-white/15 bg-white/10 px-3 py-0.5 font-mono text-[11px] font-semibold text-[#F4F4F5]">
+                    Voix-off &amp; Preuve QR certifiée · 10 F / livraison validée
+                  </span>
+                </div>
+
+                <div className="relative overflow-hidden rounded-[14px] border border-white/10 bg-black">
+                  <video
+                    src="/ofika-promo-20s.mp4"
+                    poster="/hero-delivery.jpg"
+                    controls
+                    playsInline
+                    preload="metadata"
+                    className="aspect-video w-full object-cover"
+                  >
+                    Votre navigateur ne supporte pas la lecture vidéo HTML5.
+                  </video>
                 </div>
               </div>
             </RevealOnScroll>
@@ -436,7 +481,7 @@ export default async function Home() {
                       alt="Commerçante à Abidjan consultant son relevé transparent de livraisons Ofika Delivery"
                       width={700}
                       height={600}
-                      className="aspect-[6/5] w-full object-cover object-[center_62%]"
+                      className="aspect-square w-full object-cover object-bottom"
                     />
 
                     {/* Badge flottant en haut de l'image */}
@@ -683,7 +728,184 @@ export default async function Home() {
           </div>
         </section>
 
-        {/* ── 6. QUESTIONS FRÉQUENTES ────────────────────────────────────── */}
+        {/* ── 6. ESPACE DÉVELOPPEURS & INTÉGRATEURS (STYLE LINEAR & STRIPE) ── */}
+        <section id="developers" className="relative border-t border-b border-white/[0.08] bg-[#060709] py-24 sm:py-32 text-white overflow-hidden">
+          {/* Lueur ambiante d'arrière-plan (Linear signature) */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 opacity-100"
+            style={{
+              background:
+                "radial-gradient(ellipse 90% 55% at 50% -15%, rgba(194, 65, 12, 0.22) 0%, transparent 70%), radial-gradient(ellipse 60% 40% at 95% 95%, rgba(16, 185, 129, 0.08) 0%, transparent 60%)",
+            }}
+          />
+
+          {/* Grille fine de fond (Stripe dot/mesh pattern) */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:44px_44px] [mask-image:radial-gradient(ellipse_70%_60%_at_50%_50%,#000_70%,transparent_100%)]"
+          />
+
+          <div className="relative z-10 mx-auto max-w-5xl px-4 sm:px-6 space-y-14">
+            <RevealOnScroll index={0}>
+              <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 border-b border-white/[0.08] pb-10">
+                <div className="max-w-2xl space-y-4">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <span className="inline-flex items-center gap-2 rounded-full border border-orange-500/30 bg-orange-500/10 px-3.5 py-1 font-mono text-[11px] font-bold uppercase tracking-[0.08em] text-orange-400 backdrop-blur-md shadow-[0_0_20px_rgba(249,115,22,0.15)]">
+                      <span className="h-1.5 w-1.5 rounded-full bg-orange-500 shadow-[0_0_8px_#F97316] animate-pulse" />
+                      Espace Développeurs &amp; Intégrateurs
+                    </span>
+                    <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-0.5 font-mono text-[11px] font-semibold text-zinc-400">
+                      OpenAPI 3.1 · Scalar
+                    </span>
+                  </div>
+
+                  <h2 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-[-0.03em] bg-gradient-to-b from-white via-zinc-100 to-zinc-400 bg-clip-text text-transparent leading-[1.08]">
+                    Ne recodez pas la logistique.
+                    <br />
+                    Branchez l&apos;API Ofika en 15 minutes.
+                  </h2>
+
+                  <p className="text-sm sm:text-base text-zinc-400 leading-relaxed max-w-2xl">
+                    Vous créez un site e-commerce, une application mobile, un SaaS ou un progiciel sur-mesure pour vous ou vos clients à Abidjan ?
+                    Déléguez la traçabilité complète, le pointage GPS certifié, le QR code dynamique et le code de sécurité sans réinventer la roue.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 shrink-0">
+                  <Link
+                    href="/api/reference"
+                    target="_blank"
+                    className="group relative inline-flex h-11 items-center justify-center gap-2 overflow-hidden rounded-full bg-white px-6 text-xs font-bold uppercase tracking-wider text-black shadow-[0_0_30px_rgba(255,255,255,0.2)] transition-all hover:bg-zinc-100 hover:shadow-[0_0_40px_rgba(255,255,255,0.35)] active:scale-95"
+                  >
+                    <span>Consulter la doc Scalar</span>
+                    <ArrowRightIcon className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                  </Link>
+                  <Link
+                    href="/espace/documentation"
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.05] px-5 text-xs font-semibold text-zinc-300 backdrop-blur-md transition-all hover:bg-white/10 hover:text-white hover:border-white/25 active:scale-95"
+                  >
+                    <DocumentTextIcon className="h-4 w-4 text-zinc-400" />
+                    <span>Guide 15 minutes</span>
+                  </Link>
+                </div>
+              </div>
+            </RevealOnScroll>
+
+            {/* Bento Grid : 4 Piliers Développeurs (Style Linear Bento) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+              {/* Carte 1 */}
+              <RevealOnScroll index={1}>
+                <div className="relative h-full overflow-hidden rounded-[20px] border border-white/[0.08] bg-[#0E1015]/80 p-6 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.5)] transition-all duration-300 hover:border-white/[0.18] hover:shadow-[0_16px_50px_rgba(194,65,12,0.15)] group flex flex-col justify-between">
+                  <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-orange-500/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-orange-500/10 blur-2xl group-hover:bg-orange-500/20 transition-all duration-500" />
+
+                  <div className="space-y-3.5">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-orange-500/20 bg-orange-500/10 text-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.15)]">
+                      <CommandLineIcon className="h-5 w-5" />
+                    </span>
+                    <h3 className="text-base font-bold text-white tracking-tight">11 Endpoints REST v1</h3>
+                    <p className="text-xs text-zinc-400 leading-relaxed">
+                      Création unitaire ou batch CSV, affectation de coursiers, audit trail scellé SHA-256 et bordereaux PDF prêts à imprimer.
+                    </p>
+                  </div>
+
+                  <div className="mt-5 pt-3 border-t border-white/[0.06] flex items-center justify-between text-[11px] font-mono text-zinc-500">
+                    <span>Spec OpenAPI 3.1</span>
+                    <span className="text-orange-400 font-bold">curl / SDK</span>
+                  </div>
+                </div>
+              </RevealOnScroll>
+
+              {/* Carte 2 */}
+              <RevealOnScroll index={2}>
+                <div className="relative h-full overflow-hidden rounded-[20px] border border-white/[0.08] bg-[#0E1015]/80 p-6 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.5)] transition-all duration-300 hover:border-white/[0.18] hover:shadow-[0_16px_50px_rgba(16,185,129,0.15)] group flex flex-col justify-between">
+                  <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-emerald-500/10 blur-2xl group-hover:bg-emerald-500/20 transition-all duration-500" />
+
+                  <div className="space-y-3.5">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.15)]">
+                      <KeyIcon className="h-5 w-5" />
+                    </span>
+                    <h3 className="text-base font-bold text-white tracking-tight">Sandbox &amp; Clés Test</h3>
+                    <p className="text-xs text-zinc-400 leading-relaxed">
+                      Développez en local avec une clé <code className="rounded bg-white/10 px-1 py-0.5 font-mono text-[10px] text-emerald-300">ofk_test_…</code> et simulez toutes les étapes sans livreur physique ni facturation.
+                    </p>
+                  </div>
+
+                  <div className="mt-5 pt-3 border-t border-white/[0.06] flex items-center justify-between text-[11px] font-mono text-zinc-500">
+                    <span>Mode simulateur</span>
+                    <span className="text-emerald-400 font-bold">0 F / test</span>
+                  </div>
+                </div>
+              </RevealOnScroll>
+
+              {/* Carte 3 */}
+              <RevealOnScroll index={3}>
+                <div className="relative h-full overflow-hidden rounded-[20px] border border-white/[0.08] bg-[#0E1015]/80 p-6 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.5)] transition-all duration-300 hover:border-white/[0.18] hover:shadow-[0_16px_50px_rgba(255,255,255,0.1)] group flex flex-col justify-between">
+                  <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-white/5 blur-2xl group-hover:bg-white/10 transition-all duration-500" />
+
+                  <div className="space-y-3.5">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+                      <ShieldCheckIcon className="h-5 w-5" />
+                    </span>
+                    <h3 className="text-base font-bold text-white tracking-tight">Webhooks Signés</h3>
+                    <p className="text-xs text-zinc-400 leading-relaxed">
+                      Recevez en direct chaque événement (<code className="rounded bg-white/10 px-1 py-0.5 font-mono text-[10px] text-zinc-300">delivery.arrived</code>, <code className="rounded bg-white/10 px-1 py-0.5 font-mono text-[10px] text-zinc-300">delivered</code>) avec signature HMAC-SHA256 anti-rejeu.
+                    </p>
+                  </div>
+
+                  <div className="mt-5 pt-3 border-t border-white/[0.06] flex items-center justify-between text-[11px] font-mono text-zinc-500">
+                    <span>X-Ofika-Signature</span>
+                    <span className="text-white font-bold">SHA-256</span>
+                  </div>
+                </div>
+              </RevealOnScroll>
+
+              {/* Carte 4 */}
+              <RevealOnScroll index={4}>
+                <div className="relative h-full overflow-hidden rounded-[20px] border border-white/[0.08] bg-[#0E1015]/80 p-6 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.5)] transition-all duration-300 hover:border-white/[0.18] hover:shadow-[0_16px_50px_rgba(14,165,233,0.15)] group flex flex-col justify-between">
+                  <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-sky-500/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-sky-500/10 blur-2xl group-hover:bg-sky-500/20 transition-all duration-500" />
+
+                  <div className="space-y-3.5">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-sky-500/20 bg-sky-500/10 text-sky-400 shadow-[0_0_15px_rgba(14,165,233,0.15)]">
+                      <CheckCircleIcon className="h-5 w-5" />
+                    </span>
+                    <h3 className="text-base font-bold text-white tracking-tight">Idempotence Native</h3>
+                    <p className="text-xs text-zinc-400 leading-relaxed">
+                      En-tête <code className="rounded bg-white/10 px-1 py-0.5 font-mono text-[10px] text-sky-300">Idempotency-Key</code> natif pour garantir zéro commande en double lors des micro-coupures réseau 3G/4G sur le terrain.
+                    </p>
+                  </div>
+
+                  <div className="mt-5 pt-3 border-t border-white/[0.06] flex items-center justify-between text-[11px] font-mono text-zinc-500">
+                    <span>Résilience réseau</span>
+                    <span className="text-sky-400 font-bold">100% Safe</span>
+                  </div>
+                </div>
+              </RevealOnScroll>
+            </div>
+
+            {/* Vitrine de code interactive Split-Screen Studio */}
+            <RevealOnScroll index={5}>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between px-1">
+                  <span className="font-mono text-xs font-bold uppercase tracking-wider text-zinc-400">
+                    Studio Interactif &amp; Simulation Événements
+                  </span>
+                  <span className="flex items-center gap-2 font-mono text-xs text-emerald-400">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Environnement Prêt · Abidjan Cluster
+                  </span>
+                </div>
+                <DeveloperCodeShowcase />
+              </div>
+            </RevealOnScroll>
+          </div>
+        </section>
+
+        {/* ── 7. QUESTIONS FRÉQUENTES ────────────────────────────────────── */}
         <section className="border-t border-[#EAEAEA] bg-[#FBFBFA] py-20 sm:py-28">
           <div className="mx-auto max-w-5xl px-4 sm:px-6">
             <RevealOnScroll index={0}>
@@ -746,6 +968,9 @@ export default async function Home() {
             </Link>
             <Link href="/login" className="hover:text-[#111111]">
               Connexion entreprise
+            </Link>
+            <Link href="/api/reference" className="hover:text-[#111111]" target="_blank">
+              Documentation API (Scalar)
             </Link>
             <Link href="/courier/login" className="hover:text-[#111111]">
               Espace livreur

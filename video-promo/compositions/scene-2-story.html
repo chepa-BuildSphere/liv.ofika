@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          background: #100c09;
+          font-family: Inter, system-ui, -apple-system, sans-serif;
+          perspective: 1400px;
+        }
+        #s2-hero-img {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          object-position: center 20%;
+        }
+        #s2-backdrop-shade {
+          position: absolute;
+          inset: 0;
+          background:
+            linear-gradient(90deg, rgba(12, 10, 8, 0.88) 0%, rgba(12, 10, 8, 0.45) 45%, rgba(12, 10, 8, 0.78) 100%),
+            radial-gradient(circle at 20% 25%, rgba(194, 65, 12, 0.25) 0%, transparent 60%);
+        }
+        #s2-stage {
+          position: absolute;
+          top: 108px;
+          left: 192px;
+          right: 192px;
+          bottom: 155px;
+          display: grid;
+          grid-template-columns: 1fr 1.05fr;
+          align-items: center;
+          gap: 44px;
+          z-index: 5;
+        }
+        #s2-left-copy {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+        }
+        #s2-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 22px;
+          border-radius: 999px;
+          background: #fff7ed;
+          color: #c2410c;
+          font-size: 20px;
+          font-weight: 800;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+        }
+        #s2-title {
+          margin: 22px 0 0 0;
+          font-size: 60px;
+          font-weight: 900;
+          line-height: 1.1;
+          letter-spacing: -0.03em;
+          color: #ffffff;
+        }
+        #s2-title-brand {
+          color: #fb923c;
+        }
+        #s2-desc {
+          margin: 18px 0 0 0;
+          font-size: 26px;
+          line-height: 1.45;
+          color: #f4f4f5;
+          font-weight: 500;
+        }
+        #s2-zones-row {
+          margin-top: 26px;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 12px;
+        }
+        .s2-zone-chip {
+          padding: 10px 18px;
+          border-radius: 10px;
+          background: rgba(255, 255, 255, 0.12);
+          border: 1px solid rgba(255, 255, 255, 0.24);
+          color: #ffffff;
+          font-size: 20px;
+          font-weight: 700;
+        }
+        #s2-ui-window {
+          background: #ffffff;
+          border-radius: 22px;
+          border: 2px solid #eaeaea;
+          box-shadow: 0 32px 70px rgba(0, 0, 0, 0.55);
+          overflow: hidden;
+          color: #111111;
+          transform-style: preserve-3d;
+        }
+        #s2-win-bar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 16px 24px;
+          background: #f7f6f3;
+          border-bottom: 1.5px solid #eaeaea;
+        }
+        #s2-win-dots {
+          display: flex;
+          gap: 8px;
+        }
+        .s2-dot {
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+          background: #d4d4d8;
+        }
+        #s2-win-url {
+          font-family: "JetBrains Mono", monospace;
+          font-size: 18px;
+          font-weight: 700;
+          color: #52525b;
+        }
+        #s2-win-status {
+          padding: 6px 14px;
+          border-radius: 999px;
+          background: #edf3ec;
+          color: #15803d;
+          font-size: 16px;
+          font-weight: 800;
+        }
+        #s2-win-body {
+          padding: 28px;
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+        }
+        #s2-order-head {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        #s2-order-ref {
+          font-family: "JetBrains Mono", monospace;
+          font-size: 32px;
+          font-weight: 900;
+          color: #0a0a0a;
+        }
+        #s2-order-cod {
+          padding: 8px 16px;
+          border-radius: 10px;
+          background: #f0fdf4;
+          border: 1.5px solid #bbf7d0;
+          color: #15803d;
+          font-size: 22px;
+          font-weight: 800;
+        }
+        #s2-route-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+          padding: 18px;
+          border-radius: 14px;
+          background: #fbfbfa;
+          border: 1.5px solid #eaeaea;
+        }
+        .s2-field-label {
+          font-size: 16px;
+          font-weight: 700;
+          text-transform: uppercase;
+          color: #787774;
+        }
+        .s2-field-val {
+          margin-top: 4px;
+          font-size: 22px;
+          font-weight: 800;
+          color: #111111;
+        }
+        #s2-shield-banner {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 16px 20px;
+          border-radius: 14px;
+          background: #fff7ed;
+          border: 1.5px solid #fed7aa;
+          color: #c2410c;
+          font-size: 20px;
+          font-weight: 800;
+        }
+      </style>
+
+      <div id="root" data-composition-id="scene-2-story" data-width="1920" data-height="1080">
+        <img id="s2-hero-img" src="assets/heroine-3d-confident.jpg" alt="Entrepreneure confiante Ofika" />
+        <div id="s2-backdrop-shade"></div>
+
+        <div id="s2-stage">
+          <div id="s2-left-copy">
+            <div id="s2-badge">✓ LA SOLUTION TERRAIN À ABIDJAN</div>
+            <h2 id="s2-title">
+              C&apos;est fini ! Voici <span id="s2-title-brand">Ofika Delivery</span>
+            </h2>
+            <p id="s2-desc">
+              Ton commerce est blindé, ton livreur est protégé à 100% contre les fausses accusations.
+            </p>
+            <div id="s2-zones-row">
+              <span class="s2-zone-chip">Cocody</span>
+              <span class="s2-zone-chip">Marcory</span>
+              <span class="s2-zone-chip">Yopougon</span>
+              <span class="s2-zone-chip">Plateau</span>
+            </div>
+          </div>
+
+          <div id="s2-ui-window">
+            <div id="s2-win-bar">
+              <div id="s2-win-dots">
+                <span class="s2-dot"></span>
+                <span class="s2-dot"></span>
+                <span class="s2-dot"></span>
+              </div>
+              <span id="s2-win-url">ofika://espace/livraisons/CMD-2026-0842</span>
+              <span id="s2-win-status">EN TOURNÉE · SUIVI ACTIF</span>
+            </div>
+            <div id="s2-win-body">
+              <div id="s2-order-head">
+                <div>
+                  <div class="s2-field-label">Dossier de course</div>
+                  <div id="s2-order-ref">CMD-2026-0842</div>
+                </div>
+                <div id="s2-order-cod">COD : 18 500 F CFA</div>
+              </div>
+
+              <div id="s2-route-grid">
+                <div>
+                  <div class="s2-field-label">Boutique Expéditrice</div>
+                  <div class="s2-field-val">Maison Kora · Cocody</div>
+                </div>
+                <div>
+                  <div class="s2-field-label">Cliente Destinataire</div>
+                  <div class="s2-field-val">Aïcha Koné · Yopougon</div>
+                </div>
+                <div>
+                  <div class="s2-field-label">Coursier Affecté</div>
+                  <div class="s2-field-val">Koffi Kouamé (Moto)</div>
+                </div>
+                <div>
+                  <div class="s2-field-label">Preuve Requise</div>
+                  <div class="s2-field-val">QR Bilatéral + Code 4 chiffres</div>
+                </div>
+              </div>
+
+              <div id="s2-shield-banner">
+                <span>Chaîne d&apos;audit SHA-256 infalsifiable</span>
+                <span>Zéro appli Play Store</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        const tl = gsap.timeline({ paused: true });
+
+        tl.fromTo(
+          "#s2-hero-img",
+          { scale: 1.07, x: 15 },
+          { scale: 1.0, x: -10, duration: 5.0, ease: "power1.out" },
+          0
+        );
+
+        tl.fromTo(
+          "#s2-badge",
+          { y: 24, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.45, ease: "power3.out" },
+          0.1
+        );
+
+        tl.fromTo(
+          "#s2-title",
+          { y: 38, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.55, ease: "power3.out" },
+          0.25
+        );
+
+        tl.fromTo(
+          "#s2-desc",
+          { y: 28, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.5, ease: "power2.out" },
+          0.45
+        );
+
+        tl.fromTo(
+          ".s2-zone-chip",
+          { y: 20, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.4, stagger: 0.1, ease: "back.out(1.4)" },
+          0.7
+        );
+
+        tl.fromTo(
+          "#s2-ui-window",
+          { x: 100, rotationY: -18, scale: 0.9, opacity: 0 },
+          { x: 0, rotationY: 0, scale: 1, opacity: 1, duration: 0.75, ease: "power3.out" },
+          0.35
+        );
+
+        tl.fromTo(
+          "#s2-shield-banner",
+          { scale: 0.94, opacity: 0 },
+          { scale: 1, opacity: 1, duration: 0.45, ease: "back.out(1.6)" },
+          1.25
+        );
+
+        window.__timelines["scene-2-story"] = tl;
+      </script>
+    </template>
+  </body>
+</html>
