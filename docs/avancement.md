@@ -1,6 +1,6 @@
 # Avancement du projet
 
-> Mis à jour le 16/11/2026. À relire en début de session.
+> Mis à jour le 18/11/2026. À relire en début de session.
 > Le découpage des tâches est dans `taches-mvp.md`.
 
 ## Où on en est
@@ -14,9 +14,19 @@
 | **Phase 4 — PWA livreur et validation** | ✅ Terminée (4.1 → 4.12) |
 | **Phase 5 — Échecs, retours, Forcer Livré** | ✅ Terminée (5.1 → 5.6) |
 | **Phase 6 — API et webhooks** | ✅ Terminée (6.1 → 6.10) |
-| **Phase 7 — Facturation** | ✅ Terminée (7.1 → 7.4) |
+| **Phase 7 — Facturation** | ✅ Terminée (7.1 → 7.4 + tarif dynamique `platform_settings`) |
 | **Phase 8 — Tableau de bord et finitions** | ✅ Terminée (8.1 → 8.3) |
-| Phase 9 — Tests et mise en ligne | 🔄 Prochaine **tâche 9.1** (passage de toute la checklist mvp.md §13) |
+| **Phase 9 & MVP 1 — Tests, preuves enrichies, COD, litiges & tarification dynamique** | ✅ Terminée (9.1 + MVP 1 + session du 18/11/2026) |
+
+### Session du 18/11/2026 — Tarification dynamique depuis la base, Console Super Admin & correctifs
+
+| Sujet | Détail technique & fichiers |
+|---|---|
+| **Tarif par livraison dynamique (`platform_settings`)** | Ajout de la table `platform_settings` (`src/db/schema/billing.ts`, migration `drizzle/0005_platform_settings.sql` appliquée sur la branche Neon `dev` avec `default_price_per_delivery = 200`). Fonctions `getPlatformPricePerDelivery` et `setPlatformPricePerDelivery` dans `src/lib/billing/billing.ts` avec audit (`PLATFORM_PRICE_CHANGED`, `BILLING_SETTING_CHANGED`) et lecture mise en cache Next.js 16 (`use cache` + `cacheTag("platform-pricing")` dans `src/lib/billing/public-price.ts`). |
+| **Affichage dynamique sur l'accueil & l'inscription** | Suppression du tarif en dur `10 F` sur `src/app/page.tsx`, `src/app/minimalist-home-client.tsx`, `src/app/inscription/page.tsx`, `src/app/inscription/company-register-form.tsx`, `src/app/espace/layout.tsx`, `src/app/espace/espace-nav.tsx` et `src/app/espace/facturation/page.tsx`. Les nouvelles entreprises (`createCompanyWithAdmin`, `registerCompanyWithAdmin`) héritent automatiquement du tarif en base. |
+| **Édition depuis la Console Super Admin** | Ajout du composant `PlatformPriceCard` (`src/app/admin/(backoffice)/platform-price-card.tsx`) sur `/admin` et `/admin/facturation` + synchronisation depuis `/admin/companies/[id]` (`billing-section.tsx`, `actions.ts`) avec invalidation instantanée du cache (`updateTag` & `revalidatePath`). |
+| **Correctif TLS PostgreSQL (`sslmode=verify-full`)** | Ajout de `normalizePgConnectionString` dans `src/db/index.ts` (et mise à jour de `.env.local`, `.env.example`, `drizzle.config.ts`, `functions/hello.ts`, `scripts/verify-db.ts`, `scripts/smoke-neon.ts`) pour convertir automatiquement `sslmode=require|prefer|verify-ca` en `sslmode=verify-full` et éliminer l'avertissement `pg-connection-string` sous Next.js 16.4.6 (Turbopack). |
+| **Correctif visuel section Tarifs (`/`)** | Repositionnement du bandeau « Relevé mensuel transparent » sous la photo `public/pricing-payment.jpg` et ajustement du cadrage (`aspect-[6/5] object-[center_62%]`) dans `src/app/page.tsx` afin de ne plus masquer le QR code du colis Ofika. |
 
 ### Détail de la phase 8
 
