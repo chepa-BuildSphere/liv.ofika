@@ -116,7 +116,7 @@ export default function Home() {
               href="#pricing"
               className="hidden text-xs font-medium text-[#787774] transition-colors hover:text-[#111111] md:inline"
             >
-              Tarifs (10 F CFA)
+              Tarifs
             </a>
             <Link
               href="/courier/login"
