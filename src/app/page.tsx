@@ -436,7 +436,7 @@ export default async function Home() {
                       alt="Commerçante à Abidjan consultant son relevé transparent de livraisons Ofika Delivery"
                       width={700}
                       height={600}
-                      className="aspect-[4/3] w-full object-cover"
+                      className="aspect-[6/5] w-full object-cover object-[center_62%]"
                     />
 
                     {/* Badge flottant en haut de l'image */}
@@ -444,26 +444,26 @@ export default async function Home() {
                       <span className="h-2 w-2 rounded-full bg-[#15803D] animate-pulse" />
                       <span className="text-[11px] font-bold text-[#111111]">Facturation 100% à l&apos;usage réel</span>
                     </div>
+                  </div>
 
-                    {/* Badge flottant en bas de l'image */}
-                    <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between rounded-[10px] border border-white/60 bg-white/95 p-3 shadow-lg backdrop-blur-md">
-                      <div className="flex items-center gap-2.5">
-                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#15803D]/10 text-[#15803D]">
-                          <BanknotesIcon className="h-4 w-4" />
-                        </span>
-                        <div>
-                          <p className="text-[11px] font-bold text-[#111111]">Relevé mensuel transparent</p>
-                          <p className="font-mono text-[10px] text-[#787774]">Historique scellé + preuve QR consultable</p>
-                        </div>
-                      </div>
-                      <span className="rounded-full bg-[#EDF3EC] px-2.5 py-1 font-mono text-[10px] font-bold text-[#346538]">
-                        {formattedPrice} F / course
+                  {/* Bandeau relevé mensuel sous l'image (sans masquer le QR code du colis) */}
+                  <div className="mt-3 flex items-center justify-between rounded-[12px] border border-[#EAEAEA] bg-white p-3 shadow-2xs">
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#15803D]/10 text-[#15803D]">
+                        <BanknotesIcon className="h-4 w-4" />
                       </span>
+                      <div>
+                        <p className="text-[11px] font-bold text-[#111111]">Relevé mensuel transparent</p>
+                        <p className="font-mono text-[10px] text-[#787774]">Historique scellé + preuve QR consultable</p>
+                      </div>
                     </div>
+                    <span className="shrink-0 rounded-full bg-[#EDF3EC] px-2.5 py-1 font-mono text-[10px] font-bold text-[#346538]">
+                      {formattedPrice} F / course
+                    </span>
                   </div>
 
                   {/* Badges de réassurance sous l'image */}
-                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 p-1">
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="rounded-[10px] border border-[#EAEAEA] bg-white p-3 shadow-2xs">
                       <p className="text-[11px] font-bold text-[#111111]">0 F si échec ou refus</p>
                       <p className="mt-0.5 text-[10px] text-[#787774]">Si le client ne prend pas son colis, la course n&apos;est pas facturée.</p>
