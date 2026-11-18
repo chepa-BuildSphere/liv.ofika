@@ -54,3 +54,12 @@ export const featureFlags = pgTable("feature_flags", {
   enabled: boolean("enabled").notNull().default(false),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// Paramètres globaux de la plateforme (ex. default_price_per_delivery affiché sur l'accueil et appliqué aux nouvelles entreprises)
+export const platformSettings = pgTable("platform_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedByAdminId: uuid("updated_by_admin_id").references(() => platformAdmins.id),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+

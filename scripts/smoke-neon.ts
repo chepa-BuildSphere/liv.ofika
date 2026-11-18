@@ -7,6 +7,7 @@
 import { loadEnvConfig } from "@next/env";
 import { createRealtimeClient, type SealedLiveQuery } from "@neon/realtime/client";
 import { Client } from "pg";
+import { normalizePgConnectionString } from "../src/db";
 
 loadEnvConfig(process.cwd());
 const APP = process.argv[2] ?? "http://localhost:5000";
@@ -23,7 +24,9 @@ async function main() {
   console.log(`HTTP ${health.status}`, JSON.stringify(body, null, 2));
   if (!body.ok) throw new Error("health KO");
 
-  const pg = new Client({ connectionString: process.env.DATABASE_URL_UNPOOLED });
+  const pg = new Client({
+    connectionString: normalizePgConnectionString(process.env.DATABASE_URL_UNPOOLED),
+  });
   await pg.connect();
   try {
     step(`CREATE TABLE ${TABLE}`);

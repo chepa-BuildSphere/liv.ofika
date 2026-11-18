@@ -98,23 +98,35 @@ export function BillingSection({ overview }: { overview: CompanyBillingOverview 
           <form
             key={company.pricePerDelivery}
             action={priceAction}
-            className="flex flex-wrap items-center gap-2"
+            className="space-y-2.5"
           >
-            <input type="hidden" name="companyId" value={company.id} />
-            <input
-              name="pricePerDelivery"
-              type="number"
-              min={0}
-              max={100000}
-              step={1}
-              required
-              defaultValue={company.pricePerDelivery}
-              aria-label="Prix par livraison en F CFA"
-              className="input h-9 w-36 text-sm"
-            />
-            <button type="submit" disabled={pricePending} className="btn-secondary">
-              {pricePending ? "Enregistrement…" : "Enregistrer le prix"}
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <input type="hidden" name="companyId" value={company.id} />
+              <input
+                name="pricePerDelivery"
+                type="number"
+                min={0}
+                max={100000}
+                step={1}
+                required
+                defaultValue={company.pricePerDelivery}
+                aria-label="Prix par livraison en F CFA"
+                className="input h-9 w-36 text-sm"
+              />
+              <button type="submit" disabled={pricePending} className="btn-secondary">
+                {pricePending ? "Enregistrement…" : "Enregistrer le prix"}
+              </button>
+            </div>
+            <label className="flex items-center gap-2 text-xs text-ink-muted cursor-pointer select-none">
+              <input
+                type="checkbox"
+                name="syncPlatformPrice"
+                value="true"
+                defaultChecked
+                className="h-3.5 w-3.5 rounded accent-[#C2410C]"
+              />
+              <span>Mettre aussi à jour le tarif affiché sur la page d&apos;accueil</span>
+            </label>
           </form>
           {priceState.status === "error" && (
             <p role="alert" className="alert-error text-xs">

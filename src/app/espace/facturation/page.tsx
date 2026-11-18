@@ -54,7 +54,7 @@ export default function CompanyBillingPage({ searchParams }: { searchParams: Sea
               Facturation à l&apos;Usage Réel
             </h1>
             <p className="text-xs text-[#787774]">
-              Suivi transparent de vos livraisons réussies à 10 F CFA / course. 0 F d&apos;abonnement et gratuité totale sur les échecs et retours.
+              Suivi transparent de vos livraisons réussies selon votre tarif en base. 0 F d&apos;abonnement et gratuité totale sur les échecs et retours.
             </p>
           </div>
         </div>

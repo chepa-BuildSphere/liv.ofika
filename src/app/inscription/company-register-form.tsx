@@ -14,13 +14,14 @@ import {
   CheckCircleIcon,
 } from "@/components/icons";
 
-export function CompanyRegisterForm() {
+export function CompanyRegisterForm({ pricePerDelivery = 10 }: { pricePerDelivery?: number }) {
   const [state, action, pending] = useActionState<RegisterState, FormData>(
     registerCompanyAction,
     {},
   );
   const [showPassword, setShowPassword] = useState(false);
   const [passwordValue, setPasswordValue] = useState("");
+  const formattedPrice = pricePerDelivery.toLocaleString("fr-FR");
 
   const errors = state.errors ?? {};
   const values = state.values ?? {};
@@ -303,7 +304,7 @@ export function CompanyRegisterForm() {
 
       <p className="text-center text-[11px] text-[#787774]">
         En créant un compte, vous acceptez les conditions de service d&apos;Ofika Delivery.
-        Aucune carte bancaire requise · 10 F CFA / livraison validée · Sans engagement.
+        Aucune carte bancaire requise · {formattedPrice} F CFA / livraison validée · Sans engagement.
       </p>
     </form>
   );

@@ -3,6 +3,7 @@
 // Usage : npm run db:verify
 import { loadEnvConfig } from "@next/env";
 import { Client } from "pg";
+import { normalizePgConnectionString } from "../src/db";
 
 loadEnvConfig(process.cwd());
 
@@ -21,7 +22,9 @@ async function expectRefused(pg: Client, label: string, sqlText: string) {
 }
 
 async function main() {
-  const pg = new Client({ connectionString: process.env.DATABASE_URL_UNPOOLED });
+  const pg = new Client({
+    connectionString: normalizePgConnectionString(process.env.DATABASE_URL_UNPOOLED),
+  });
   await pg.connect();
   try {
     console.log(`Branche : ${process.env.NEON_BRANCH}`);

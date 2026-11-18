@@ -4,6 +4,7 @@ import { logEvent, type Executor } from "@/lib/audit";
 import { USER_SESSION_TTL_MS } from "@/lib/auth/company-user";
 import { normalizeEmail } from "@/lib/auth/platform-admin";
 import { createSession, type SessionMeta } from "@/lib/auth/sessions";
+import { getPlatformPricePerDelivery } from "@/lib/billing/billing";
 import { hashSecret } from "@/lib/security";
 import { EMAIL_RE, PHONE_RE } from "@/lib/validation";
 
@@ -122,8 +123,9 @@ export async function registerCompanyWithAdmin(
 
     const cName = input.companyName.trim();
     const slug = await uniqueSlug(tx, slugify(cName));
+    const defaultPrice = await getPlatformPricePerDelivery(tx);
 
-    // tenant-guard: création d'entreprise autonome avec facturation active par défaut à 10 F CFA
+    // tenant-guard: création d'entreprise autonome avec le tarif plateforme en vigueur en base
     const [company] = await tx
       .insert(companies)
       .values({
@@ -132,7 +134,7 @@ export async function registerCompanyWithAdmin(
         phone: input.companyPhone?.trim() || null,
         status: "ACTIVE",
         billingEnabled: true,
-        pricePerDelivery: 10,
+        pricePerDelivery: defaultPrice,
       })
       .returning({ id: companies.id, name: companies.name, slug: companies.slug });
 

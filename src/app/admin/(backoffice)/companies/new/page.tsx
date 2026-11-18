@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { db } from "@/db";
 import { requireAdmin } from "@/lib/auth/admin-session";
+import { getPlatformPricePerDelivery } from "@/lib/billing/billing";
 import { ChevronRightIcon, BuildingOfficeIcon } from "@/components/icons";
 import { CreateCompanyForm } from "./create-company-form";
 
@@ -57,5 +59,6 @@ export default function NewCompanyPage() {
 
 async function Guarded() {
   await requireAdmin();
-  return <CreateCompanyForm />;
+  const defaultPrice = await getPlatformPricePerDelivery(db);
+  return <CreateCompanyForm defaultPrice={defaultPrice} />;
 }

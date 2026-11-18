@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { db } from "@/db";
 import { companies, couriers, deliveries, userRoles, users } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth/admin-session";
+import { getPlatformPricePerDelivery } from "@/lib/billing/billing";
 import {
   BuildingOfficeIcon,
   TruckIcon,
@@ -13,6 +14,7 @@ import {
   PlusIcon,
 } from "@/components/icons";
 import { CompaniesTableClient } from "./companies-table-client";
+import { PlatformPriceCard } from "./platform-price-card";
 
 export const metadata: Metadata = { title: "Super Admin Console — Ofika Delivery" };
 
@@ -34,7 +36,7 @@ export default function AdminHomePage() {
 }
 
 async function AdminDashboard() {
-  const admin = await requireAdmin();
+  await requireAdmin();
 
   const [
     [companyCount],
@@ -42,6 +44,7 @@ async function AdminDashboard() {
     [courierCount],
     [deliveryCount],
     [deliveredCount],
+    platformPrice,
     list,
   ] = await Promise.all([
     db.select({ n: count() }).from(companies),
@@ -49,6 +52,7 @@ async function AdminDashboard() {
     db.select({ n: count() }).from(couriers),
     db.select({ n: count() }).from(deliveries),
     db.select({ n: count() }).from(deliveries).where(eq(deliveries.status, "DELIVERED")),
+    getPlatformPricePerDelivery(db),
     db
       .select({
         id: companies.id,
@@ -187,15 +191,18 @@ async function AdminDashboard() {
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-3xl font-extrabold tracking-tight text-[#111111] tabular-nums">
-              10 F
+              {platformPrice.toLocaleString("fr-FR")} F
             </span>
             <span className="text-xs text-[#787774]">CFA / course</span>
           </div>
           <div className="mt-2 text-[11px] text-[#787774]">
-            Relevés mensuels consolidés
+            Tarif page d&apos;accueil &amp; par défaut
           </div>
         </div>
       </section>
+
+      {/* ── RÉGLAGE DU TARIF DE LA PAGE D'ACCUEIL & PLATEFORME ─────────── */}
+      <PlatformPriceCard currentPrice={platformPrice} />
 
       {/* ── TABLEAU INTERACTIF DES MARCHANDS ───────────────────────────── */}
       <section aria-label="Liste des entreprises partenaires">

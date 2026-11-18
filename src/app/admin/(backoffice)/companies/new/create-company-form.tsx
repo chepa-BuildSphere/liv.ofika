@@ -5,7 +5,7 @@ import { useActionState } from "react";
 import { ActivationLinkBox } from "@/components/activation-link-box";
 import { createCompanyAction, type CreateCompanyState } from "../actions";
 
-export function CreateCompanyForm() {
+export function CreateCompanyForm({ defaultPrice = 10 }: { defaultPrice?: number }) {
   const [state, action, pending] = useActionState<CreateCompanyState, FormData>(createCompanyAction, {
     status: "idle",
   });
@@ -54,7 +54,7 @@ export function CreateCompanyForm() {
       </fieldset>
 
       <p className="text-sm text-ink-muted">
-        Facturation par défaut : activée, 10 F CFA par livraison. Modifiable plus tard.
+        Facturation par défaut : activée, {defaultPrice.toLocaleString("fr-FR")} F CFA par livraison. Modifiable plus tard.
       </p>
 
       <button

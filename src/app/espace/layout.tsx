@@ -1,4 +1,7 @@
+import { eq } from "drizzle-orm";
 import { Suspense, type ReactNode } from "react";
+import { db } from "@/db";
+import { companies } from "@/db/schema";
 import { can, userActor } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/user-session";
 import { getRecentNotifications } from "@/lib/notifications/notifications";
@@ -28,7 +31,18 @@ async function AsyncEspaceSidebar() {
   const user = await requireUser();
   const actor = userActor(user);
   const company = { companyId: user.companyId };
-  const notifications = await getRecentNotifications(user.companyId, 15);
+  const [notifications, [companyBilling]] = await Promise.all([
+    getRecentNotifications(user.companyId, 15),
+    // tenant-guard: lecture du tarif de la propre entreprise de l'utilisateur connecté
+    db
+      .select({
+        billingEnabled: companies.billingEnabled,
+        pricePerDelivery: companies.pricePerDelivery,
+      })
+      .from(companies)
+      .where(eq(companies.id, user.companyId))
+      .limit(1),
+  ]);
 
   const canDeliveries = can(actor, "delivery.create", company).allowed;
   const canReturns = can(actor, "return.receive", {
@@ -51,6 +65,13 @@ async function AsyncEspaceSidebar() {
       companyName={user.companyName}
       userName={user.name}
       userRoles={user.roles}
+      pricePerDelivery={
+        companyBilling
+          ? companyBilling.billingEnabled
+            ? companyBilling.pricePerDelivery
+            : 0
+          : undefined
+      }
       permissions={{
         canDeliveries,
         canReturns,

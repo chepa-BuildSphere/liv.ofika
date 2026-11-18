@@ -20,6 +20,7 @@ interface EspaceNavProps {
   companyName: string;
   userName: string;
   userRoles: string[];
+  pricePerDelivery?: number;
   permissions: {
     canDeliveries: boolean;
     canReturns: boolean;
@@ -52,12 +53,17 @@ export function EspaceSidebarNav({
   companyName,
   userName,
   userRoles,
+  pricePerDelivery,
   permissions,
   notificationBell,
   logoutAction,
 }: EspaceNavProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const billingLabel =
+    typeof pricePerDelivery === "number"
+      ? `Facturation (${pricePerDelivery.toLocaleString("fr-FR")} F)`
+      : "Facturation";
 
   const initial = companyName.slice(0, 1).toUpperCase();
   const primaryRole = userRoles[0] ?? "COMPANY_ADMIN";
@@ -218,7 +224,7 @@ export function EspaceSidebarNav({
                     }`}
                   >
                     <ReceiptIcon className="h-4 w-4" />
-                    <span>Facturation (10 F)</span>
+                    <span>{billingLabel}</span>
                   </Link>
                 )}
 
@@ -444,7 +450,7 @@ export function EspaceSidebarNav({
                 >
                   <div className="flex items-center gap-2.5">
                     <ReceiptIcon className="h-4 w-4" />
-                    <span>Facturation (10 F)</span>
+                    <span>{billingLabel}</span>
                   </div>
                   {isBillingActive && <span className="h-1.5 w-1.5 rounded-full bg-[#C2410C]" />}
                 </Link>

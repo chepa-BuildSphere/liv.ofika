@@ -1,10 +1,11 @@
-import { and, desc, eq, gte, lt } from "drizzle-orm";
+import { desc, eq, gte, lt } from "drizzle-orm";
 import {
   billingSettingChanges,
   companies,
   deliveries,
   monthlyStatements,
   platformAdmins,
+  platformSettings,
 } from "@/db/schema";
 import { logEvent, type Executor } from "@/lib/audit";
 import type { CompanyUserIdentity } from "@/lib/auth/company-user";
@@ -32,6 +33,10 @@ export {
 const MAX_PRICE_CFA = 100_000;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PERIOD_RE = /^(\d{4})-(\d{2})(?:-01)?$/;
+
+export const PLATFORM_PRICE_KEY = "default_price_per_delivery";
+export const PLATFORM_PRICE_CACHE_TAG = "platform-pricing";
+
 
 export type BillingErrorCode = "FORBIDDEN" | "INVALID" | "NOT_FOUND" | "ALREADY_PAID";
 
@@ -283,6 +288,155 @@ export async function setCompanyDeliveryPrice(
     });
 
     return { changed: true, pricePerDelivery: valid.price };
+  });
+}
+
+/**
+ * Lit le tarif unitaire par livraison de la plateforme en base de données
+ * (affiché sur la page d'accueil, l'inscription et appliqué aux nouvelles entreprises).
+ */
+export async function getPlatformPricePerDelivery(db: Executor): Promise<number> {
+  try {
+    const [setting] = await db
+      .select({ value: platformSettings.value })
+      .from(platformSettings)
+      .where(eq(platformSettings.key, PLATFORM_PRICE_KEY))
+      .limit(1);
+
+    if (setting) {
+      const parsed = validatePricePerDelivery(setting.value);
+      if (parsed.ok) return parsed.price;
+    }
+
+    const [latestCompany] = await db
+      .select({ pricePerDelivery: companies.pricePerDelivery })
+      .from(companies)
+      .orderBy(desc(companies.updatedAt))
+      .limit(1);
+
+    if (latestCompany && Number.isSafeInteger(latestCompany.pricePerDelivery) && latestCompany.pricePerDelivery >= 0) {
+      return latestCompany.pricePerDelivery;
+    }
+  } catch {
+    // Repli sécurisé si la table n'est pas encore accessible lors d'un build hors-ligne
+  }
+
+  return DEFAULT_PRICE_PER_DELIVERY;
+}
+
+/**
+ * Modifie le tarif par livraison de la plateforme (affiché sur la page d'accueil et appliqué par défaut),
+ * et met optionnellement à jour le tarif des entreprises existantes en historisant chaque changement.
+ */
+export async function setPlatformPricePerDelivery(
+  db: Executor,
+  admin: AdminIdentity,
+  rawPrice: number | string,
+  opts: {
+    applyToExistingCompanies?: boolean;
+    meta?: { ip?: string | null; userAgent?: string | null };
+  } = {},
+): Promise<{
+  changed: boolean;
+  pricePerDelivery: number;
+  updatedCompaniesCount: number;
+}> {
+  if (!can(platformAdminActor(admin), "billing.setPrice", { companyId: "" }).allowed) {
+    throw new BillingError("FORBIDDEN", "Réservé à l'admin plateforme.");
+  }
+
+  const valid = validatePricePerDelivery(rawPrice);
+  if (!valid.ok) {
+    throw new BillingError("INVALID", valid.error);
+  }
+
+  return db.transaction(async (tx) => {
+    const oldPrice = await getPlatformPricePerDelivery(tx);
+    const now = new Date();
+
+    await tx
+      .insert(platformSettings)
+      .values({
+        key: PLATFORM_PRICE_KEY,
+        value: String(valid.price),
+        updatedByAdminId: admin.id,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: platformSettings.key,
+        set: {
+          value: String(valid.price),
+          updatedByAdminId: admin.id,
+          updatedAt: now,
+        },
+      });
+
+    if (oldPrice !== valid.price) {
+      await logEvent(tx, {
+        companyId: null,
+        eventType: "PLATFORM_PRICE_CHANGED",
+        actorType: "PLATFORM_ADMIN",
+        actorId: admin.id,
+        payload: {
+          setting: "DEFAULT_PRICE_PER_DELIVERY",
+          oldValue: oldPrice,
+          newValue: valid.price,
+          applyToExistingCompanies: Boolean(opts.applyToExistingCompanies),
+        },
+        ip: opts.meta?.ip ?? null,
+        userAgent: opts.meta?.userAgent ?? null,
+      });
+    }
+
+    let updatedCompaniesCount = 0;
+
+    if (opts.applyToExistingCompanies) {
+      const allCompanies = await tx
+        .select({
+          id: companies.id,
+          pricePerDelivery: companies.pricePerDelivery,
+        })
+        .from(companies)
+        .for("update");
+
+      for (const comp of allCompanies) {
+        if (comp.pricePerDelivery === valid.price) continue;
+
+        await tx
+          .update(companies)
+          .set({ pricePerDelivery: valid.price, updatedAt: now })
+          .where(eq(companies.id, comp.id));
+
+        await tenantScope(tx, comp.id).insert(billingSettingChanges, {
+          setting: "PRICE_PER_DELIVERY",
+          oldValue: String(comp.pricePerDelivery),
+          newValue: String(valid.price),
+          changedByAdminId: admin.id,
+        });
+
+        await logEvent(tx, {
+          companyId: comp.id,
+          eventType: "BILLING_SETTING_CHANGED",
+          actorType: "PLATFORM_ADMIN",
+          actorId: admin.id,
+          payload: {
+            setting: "PRICE_PER_DELIVERY",
+            oldValue: comp.pricePerDelivery,
+            newValue: valid.price,
+          },
+          ip: opts.meta?.ip ?? null,
+          userAgent: opts.meta?.userAgent ?? null,
+        });
+
+        updatedCompaniesCount += 1;
+      }
+    }
+
+    return {
+      changed: oldPrice !== valid.price || updatedCompaniesCount > 0,
+      pricePerDelivery: valid.price,
+      updatedCompaniesCount,
+    };
   });
 }
 

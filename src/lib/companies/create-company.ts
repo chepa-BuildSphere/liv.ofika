@@ -3,6 +3,7 @@ import { companies, userRoles, users } from "@/db/schema";
 import { logEvent, type Executor } from "@/lib/audit";
 import { issueActivationToken } from "@/lib/auth/activation";
 import { normalizeEmail } from "@/lib/auth/platform-admin";
+import { getPlatformPricePerDelivery } from "@/lib/billing/billing";
 import { EMAIL_RE, PHONE_RE } from "@/lib/validation";
 
 // Création d'une entreprise et de son premier admin, par l'admin plateforme
@@ -83,9 +84,15 @@ export async function createCompanyWithAdmin(
     if (existing) return { ok: false, errors: { adminEmail: "Cet e-mail est déjà utilisé par un autre compte." } };
 
     const name = input.companyName.trim();
+    const defaultPrice = await getPlatformPricePerDelivery(tx);
     const [company] = await tx
       .insert(companies)
-      .values({ name, slug: await uniqueSlug(tx, slugify(name)), phone: input.companyPhone?.trim() || null })
+      .values({
+        name,
+        slug: await uniqueSlug(tx, slugify(name)),
+        phone: input.companyPhone?.trim() || null,
+        pricePerDelivery: defaultPrice,
+      })
       .returning({ id: companies.id, name: companies.name, slug: companies.slug });
 
     const [admin] = await tx

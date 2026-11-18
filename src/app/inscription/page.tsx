@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { getCurrentUser } from "@/lib/auth/user-session";
+import { getCachedPlatformPrice } from "@/lib/billing/public-price";
 import { CompanyRegisterForm } from "./company-register-form";
 import { Wordmark } from "@/components/wordmark";
 import { ShieldCheckIcon, CheckCircleIcon, ArrowRightIcon } from "@/components/icons";
@@ -13,7 +14,10 @@ export const metadata: Metadata = {
     "Créez votre compte entreprise en 2 minutes. Gérez vos livreurs, éliminez les contestations de livraison et validez vos remises par QR code sécurisé.",
 };
 
-export default function RegisterCompanyPage() {
+export default async function RegisterCompanyPage() {
+  const pricePerDelivery = await getCachedPlatformPrice();
+  const formattedPrice = pricePerDelivery.toLocaleString("fr-FR");
+
   return (
     <div className="relative flex min-h-screen flex-col bg-[#FBFBFA] text-[#111111]">
       {/* Texture douce */}
@@ -65,7 +69,7 @@ export default function RegisterCompanyPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
             <div className="flex items-center gap-2 rounded-[8px] border border-[#EAEAEA] bg-white p-2.5">
               <CheckCircleIcon className="h-4 w-4 shrink-0 text-[#15803D]" />
-              <span className="font-medium text-[#111111]">10 F CFA / livraison livrée</span>
+              <span className="font-medium text-[#111111]">{formattedPrice} F CFA / livraison livrée</span>
             </div>
             <div className="flex items-center gap-2 rounded-[8px] border border-[#EAEAEA] bg-white p-2.5">
               <CheckCircleIcon className="h-4 w-4 shrink-0 text-[#15803D]" />
@@ -79,7 +83,7 @@ export default function RegisterCompanyPage() {
 
           {/* Carte du formulaire */}
           <div className="rounded-[12px] border border-[#EAEAEA] bg-white p-5 shadow-[0_2px_8px_rgba(0,0,0,0.03)] sm:p-8">
-            <CompanyRegisterForm />
+            <CompanyRegisterForm pricePerDelivery={pricePerDelivery} />
           </div>
 
           {/* Redirection vers le portail livreur */}

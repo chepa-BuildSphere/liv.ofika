@@ -3,8 +3,13 @@
 import { attachDatabasePool } from "@neon/functions";
 import { Pool } from "pg";
 
+function normalizeSslMode(rawUrl: string | undefined): string | undefined {
+  if (!rawUrl) return rawUrl;
+  return rawUrl.replace(/([?&]sslmode=)(?:require|prefer|verify-ca)\b/g, "$1verify-full");
+}
+
 // Pool créé une seule fois par isolat, petit `max` car chaque isolat a le sien.
-const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 5 });
+const pool = new Pool({ connectionString: normalizeSslMode(process.env.DATABASE_URL), max: 5 });
 attachDatabasePool(pool);
 
 export default {

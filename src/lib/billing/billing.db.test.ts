@@ -22,10 +22,12 @@ import {
   computeCompanyPeriodBilling,
   generateMonthlyStatement,
   getCompanyBillingOverview,
+  getPlatformPricePerDelivery,
   listAllMonthlyStatements,
   listCompanyBillingHistory,
   markMonthlyStatementPaid,
   setCompanyDeliveryPrice,
+  setPlatformPricePerDelivery,
   toggleCompanyBilling,
 } from "./billing";
 
@@ -144,6 +146,26 @@ describe("réglages facturation ON/OFF, prix par livraison et historique (7.1)",
         "PRICE_PER_DELIVERY:10->25",
       ]);
       expect(history.every((h) => h.changedByAdminName === platformAdmin.name)).toBe(true);
+      expect((await verifyAuditChain(tx)).ok).toBe(true);
+    });
+  });
+
+  it("lit et modifie le tarif global de la plateforme (page d'accueil) et l'applique aux entreprises", async () => {
+    await inRolledBackTx(async (tx) => {
+      const { platformAdmin, a } = await setupPlatformAndCompanies(tx);
+
+      const updated = await setPlatformPricePerDelivery(tx, platformAdmin, 250, {
+        applyToExistingCompanies: true,
+      });
+      expect(updated.changed).toBe(true);
+      expect(updated.pricePerDelivery).toBe(250);
+      expect(updated.updatedCompaniesCount).toBeGreaterThanOrEqual(1);
+
+      const currentPrice = await getPlatformPricePerDelivery(tx);
+      expect(currentPrice).toBe(250);
+
+      const history = await listCompanyBillingHistory(tx, a.companyId);
+      expect(history.some((h) => h.setting === "PRICE_PER_DELIVERY" && h.newValue === "250")).toBe(true);
       expect((await verifyAuditChain(tx)).ok).toBe(true);
     });
   });

@@ -1,16 +1,13 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Wordmark } from "@/components/wordmark";
+import { getCachedPlatformPrice } from "@/lib/billing/public-price";
 import { MinimalFaqAccordion, RevealOnScroll } from "./minimalist-home-client";
 import {
   CheckCircleIcon,
-  ShieldCheckIcon,
-  QrCodeIcon,
   PhoneIcon,
-  PackageIcon,
   BanknotesIcon,
   ArrowRightIcon,
-  MapPinIcon,
 } from "@/components/icons";
 
 const TIMELINE_SAMPLE = [
@@ -80,7 +77,10 @@ function ParcelSketchIllustration() {
   );
 }
 
-export default function Home() {
+export default async function Home() {
+  const pricePerDelivery = await getCachedPlatformPrice();
+  const formattedPrice = pricePerDelivery.toLocaleString("fr-FR");
+
   return (
     <div className="relative min-h-screen bg-[#FBFBFA] text-[#111111]">
       {/* Lumière ambiante fixe subtile */}
@@ -194,7 +194,7 @@ export default function Home() {
                   <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3 border-t border-[#EAEAEA] pt-6 text-xs text-[#787774]">
                     <div className="flex items-center gap-2">
                       <CheckCircleIcon className="h-4 w-4 shrink-0 text-[#15803D]" />
-                      <span><strong>10 F CFA</strong> par livraison</span>
+                      <span><strong>{formattedPrice} F CFA</strong> par livraison</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <CheckCircleIcon className="h-4 w-4 shrink-0 text-[#15803D]" />
@@ -457,7 +457,7 @@ export default function Home() {
                         </div>
                       </div>
                       <span className="rounded-full bg-[#EDF3EC] px-2.5 py-1 font-mono text-[10px] font-bold text-[#346538]">
-                        10 F / course
+                        {formattedPrice} F / course
                       </span>
                     </div>
                   </div>
@@ -489,7 +489,7 @@ export default function Home() {
 
                     <div className="mt-6 border-b border-[#EAEAEA] pb-6">
                       <div className="flex items-baseline gap-2">
-                        <span className="text-5xl font-extrabold tracking-tight text-[#111111]">10 F</span>
+                        <span className="text-5xl font-extrabold tracking-tight text-[#111111]">{formattedPrice} F</span>
                         <span className="text-lg font-semibold text-[#787774]">CFA / livraison livrée</span>
                       </div>
                       <p className="mt-2 text-xs text-[#787774]">
@@ -671,7 +671,7 @@ export default function Home() {
                   <li className="flex items-start gap-2.5">
                     <CheckCircleIcon className="h-4 w-4 shrink-0 text-[#15803D] mt-0.5" />
                     <div>
-                      <strong className="text-[#15803D]">10 F CFA seulement par livraison livrée :</strong>
+                      <strong className="text-[#15803D]">{formattedPrice} F CFA seulement par livraison livrée :</strong>
                       <p className="mt-0.5 text-[#333] leading-relaxed">
                         Vous ne payez que lorsque le client a reçu son colis. Si le client refuse ou que le colis revient au magasin, c&apos;est <strong>0 F CFA (gratuit)</strong>.
                       </p>
@@ -700,7 +700,7 @@ export default function Home() {
                   </p>
                 </div>
                 <div className="lg:col-span-8">
-                  <MinimalFaqAccordion />
+                  <MinimalFaqAccordion pricePerDelivery={pricePerDelivery} />
                 </div>
               </div>
             </RevealOnScroll>

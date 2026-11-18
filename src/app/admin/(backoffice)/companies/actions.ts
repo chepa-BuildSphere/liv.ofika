@@ -1,6 +1,6 @@
 "use server";
 
-import { refresh } from "next/cache";
+import { refresh, revalidatePath, updateTag } from "next/cache";
 import { db } from "@/db";
 import { activationUrl } from "@/lib/app-url";
 import { requireAdmin } from "@/lib/auth/admin-session";
@@ -9,7 +9,9 @@ import {
   BillingError,
   generateMonthlyStatement,
   markMonthlyStatementPaid,
+  PLATFORM_PRICE_CACHE_TAG,
   setCompanyDeliveryPrice,
+  setPlatformPricePerDelivery,
   toggleCompanyBilling,
 } from "@/lib/billing/billing";
 import {
@@ -100,19 +102,67 @@ export async function setPriceAction(
   const admin = await requireAdmin();
   const companyId = String(formData.get("companyId") ?? "");
   const pricePerDelivery = String(formData.get("pricePerDelivery") ?? "");
+  const syncPlatformPrice = formData.get("syncPlatformPrice") !== "false";
 
   try {
+    const meta = await getRequestMeta();
     const res = await setCompanyDeliveryPrice(
       db,
       admin,
       companyId,
       pricePerDelivery,
-      await getRequestMeta(),
+      meta,
     );
+    if (syncPlatformPrice) {
+      await setPlatformPricePerDelivery(db, admin, res.pricePerDelivery, {
+        applyToExistingCompanies: false,
+        meta,
+      });
+    }
+    updateTag(PLATFORM_PRICE_CACHE_TAG);
+    revalidatePath("/");
+    revalidatePath("/register");
+    revalidatePath("/inscription");
+    revalidatePath("/admin");
+    revalidatePath("/admin/facturation");
     refresh();
     return {
       status: "done",
       message: `Tarif mis à jour : ${res.pricePerDelivery.toLocaleString("fr-FR")} F CFA / livraison.`,
+    };
+  } catch (e) {
+    if (e instanceof BillingError) return { status: "error", message: e.message };
+    throw e;
+  }
+}
+
+export async function setPlatformPriceAction(
+  _prev: BillingMutationState,
+  formData: FormData,
+): Promise<BillingMutationState> {
+  const admin = await requireAdmin();
+  const pricePerDelivery = String(formData.get("pricePerDelivery") ?? "");
+  const applyToExistingCompanies = formData.get("applyToExistingCompanies") === "true";
+
+  try {
+    const res = await setPlatformPricePerDelivery(db, admin, pricePerDelivery, {
+      applyToExistingCompanies,
+      meta: await getRequestMeta(),
+    });
+    updateTag(PLATFORM_PRICE_CACHE_TAG);
+    revalidatePath("/");
+    revalidatePath("/register");
+    revalidatePath("/inscription");
+    revalidatePath("/admin");
+    revalidatePath("/admin/facturation");
+    refresh();
+    return {
+      status: "done",
+      message: `Tarif plateforme enregistré : ${res.pricePerDelivery.toLocaleString("fr-FR")} F CFA / livraison (affiché sur la page d'accueil${
+        res.updatedCompaniesCount > 0
+          ? ` et appliqué à ${res.updatedCompaniesCount} entreprise(s)`
+          : ""
+      }).`,
     };
   } catch (e) {
     if (e instanceof BillingError) return { status: "error", message: e.message };

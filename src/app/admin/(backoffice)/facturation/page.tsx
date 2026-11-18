@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { requireAdmin } from "@/lib/auth/admin-session";
 import {
   formatBillingPeriod,
+  getPlatformPricePerDelivery,
   listAllMonthlyStatements,
   STATEMENT_STATUS_LABEL,
 } from "@/lib/billing/billing";
@@ -15,6 +16,7 @@ import {
   ChevronRightIcon,
   BanknotesIcon,
 } from "@/components/icons";
+import { PlatformPriceCard } from "../platform-price-card";
 import { MarkPaidButton } from "./mark-paid-button";
 
 export const metadata: Metadata = { title: "Facturation & Relevés Mensuels — Super Admin Ofika" };
@@ -38,7 +40,7 @@ export default function AdminBillingPage() {
               Relevés mensuels consolidés
             </h1>
             <p className="mt-1 text-xs text-[#787774]">
-              Suivi des 10 F CFA / livraison pour chaque enseigne, validation des encaissements et archivage officiel.
+              Suivi du tarif par livraison pour chaque enseigne, configuration du prix de la page d&apos;accueil, validation des encaissements et archivage officiel.
             </p>
           </div>
         </div>
@@ -62,7 +64,10 @@ export default function AdminBillingPage() {
 
 async function StatementsContent() {
   const admin = await requireAdmin();
-  const rows = await listAllMonthlyStatements(db, admin);
+  const [rows, platformPrice] = await Promise.all([
+    listAllMonthlyStatements(db, admin),
+    getPlatformPricePerDelivery(db),
+  ]);
 
   const totalStatements = rows.length;
   const totalAmount = rows.reduce((acc, r) => acc + r.statement.totalAmount, 0);
@@ -73,21 +78,24 @@ async function StatementsContent() {
 
   if (rows.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-[#EAEAEA] bg-white p-12 text-center space-y-3">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#F7F6F3] text-[#787774]">
-          <ReceiptIcon className="h-6 w-6" />
-        </div>
-        <h2 className="text-sm font-bold text-[#111111]">Aucun relevé mensuel généré</h2>
-        <p className="max-w-md mx-auto text-xs text-[#787774] leading-relaxed">
-          Les relevés mensuels sont créés automatiquement en fin de mois ou émis directement depuis la fiche de chaque entreprise.
-        </p>
-        <div className="pt-2">
-          <Link
-            href="/admin"
-            className="inline-flex h-9 items-center gap-2 rounded-lg bg-[#111111] px-4 text-xs font-bold text-white shadow-xs hover:bg-[#333]"
-          >
-            <span>Consulter les entreprises</span>
-          </Link>
+      <div className="space-y-6">
+        <PlatformPriceCard currentPrice={platformPrice} />
+        <div className="rounded-xl border border-dashed border-[#EAEAEA] bg-white p-12 text-center space-y-3">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#F7F6F3] text-[#787774]">
+            <ReceiptIcon className="h-6 w-6" />
+          </div>
+          <h2 className="text-sm font-bold text-[#111111]">Aucun relevé mensuel généré</h2>
+          <p className="max-w-md mx-auto text-xs text-[#787774] leading-relaxed">
+            Les relevés mensuels sont créés automatiquement en fin de mois ou émis directement depuis la fiche de chaque entreprise.
+          </p>
+          <div className="pt-2">
+            <Link
+              href="/admin"
+              className="inline-flex h-9 items-center gap-2 rounded-lg bg-[#111111] px-4 text-xs font-bold text-white shadow-xs hover:bg-[#333]"
+            >
+              <span>Consulter les entreprises</span>
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -95,6 +103,7 @@ async function StatementsContent() {
 
   return (
     <div className="space-y-6">
+      <PlatformPriceCard currentPrice={platformPrice} />
       {/* ── METRICS FACTURATION CARDS ─────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Total Facturé */}
@@ -165,7 +174,7 @@ async function StatementsContent() {
             </span>
           </div>
           <span className="text-xs text-[#787774]">
-            Tarif scellé à 10 F CFA / course livrée
+            Tarif standard actuel : {platformPrice.toLocaleString("fr-FR")} F CFA / course livrée
           </span>
         </div>
 
@@ -175,7 +184,7 @@ async function StatementsContent() {
               <tr>
                 <th className="px-5 py-3">Entreprise Partenaire</th>
                 <th className="px-4 py-3">Période</th>
-                <th className="px-4 py-3 text-right">Livrées (10 F)</th>
+                <th className="px-4 py-3 text-right">Livrées</th>
                 <th className="px-4 py-3 text-right">Retours (0 F)</th>
                 <th className="px-4 py-3 text-right">Montant Total</th>
                 <th className="px-4 py-3">Statut</th>
