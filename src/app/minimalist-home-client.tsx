@@ -347,13 +347,28 @@ export async function POST(req: Request) {
   },
 } as const;
 
+function CopyIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  );
+}
+
+function CheckIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
 type SnippetKey = keyof typeof CODE_SNIPPETS;
 
 export function DeveloperCodeShowcase() {
   const [activeTab, setActiveTab] = useState<SnippetKey>("curl");
   const [copied, setCopied] = useState(false);
-  const [simStep, setSimStep] = useState<number>(4); // default: full delivery verified
-  const [isSimulating, setIsSimulating] = useState(false);
 
   const snippet = CODE_SNIPPETS[activeTab];
 
@@ -367,36 +382,20 @@ export function DeveloperCodeShowcase() {
     }
   };
 
-  const runSimulation = () => {
-    if (isSimulating) return;
-    setIsSimulating(true);
-    setSimStep(1);
-
-    setTimeout(() => setSimStep(2), 700);
-    setTimeout(() => setSimStep(3), 1500);
-    setTimeout(() => {
-      setSimStep(4);
-      setIsSimulating(false);
-    }, 2300);
-  };
-
   return (
-    <div className="relative overflow-hidden rounded-[24px] border border-white/[0.1] bg-[#0A0B0E]/90 shadow-[0_20px_70px_rgba(0,0,0,0.65)] backdrop-blur-2xl">
-      {/* Ligne lumineuse en haut (Linear signature) */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#C2410C] to-transparent opacity-80" />
-
-      {/* Barre de commande supérieure / Header IDE */}
-      <div className="flex flex-wrap items-center justify-between border-b border-white/[0.08] bg-[#0E1015]/80 px-4 py-3 sm:px-6">
+    <div className="relative overflow-hidden rounded-[16px] border border-[#27272A] bg-[#0E1015] shadow-[0_20px_50px_rgba(0,0,0,0.35)]">
+      {/* Barre superieure IDE (Style Stripe) */}
+      <div className="flex flex-wrap items-center justify-between border-b border-white/[0.08] bg-[#14171F] px-4 py-2.5 sm:px-5 gap-2">
         <div className="flex items-center gap-3">
-          {/* Faux contrôles de fenêtre */}
-          <div className="flex items-center gap-1.5 mr-2">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#EF4444]/70" />
-            <span className="h-2.5 w-2.5 rounded-full bg-[#F59E0B]/70" />
-            <span className="h-2.5 w-2.5 rounded-full bg-[#10B981]/70" />
+          {/* Faux controles de fenetre */}
+          <div className="flex items-center gap-1.5 mr-1" aria-hidden="true">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#EF4444]/80" />
+            <span className="h-2.5 w-2.5 rounded-full bg-[#F59E0B]/80" />
+            <span className="h-2.5 w-2.5 rounded-full bg-[#10B981]/80" />
           </div>
 
-          {/* Onglets langages style Linear */}
-          <div className="flex flex-wrap items-center gap-1">
+          {/* Onglets langages */}
+          <div className="flex items-center gap-1">
             {(Object.keys(CODE_SNIPPETS) as SnippetKey[]).map((key) => {
               const item = CODE_SNIPPETS[key];
               const isActive = activeTab === key;
@@ -408,15 +407,12 @@ export function DeveloperCodeShowcase() {
                     setActiveTab(key);
                     setCopied(false);
                   }}
-                  className={`relative cursor-pointer rounded-full px-3 py-1 font-mono text-xs font-semibold transition-all ${
+                  className={`cursor-pointer rounded-[6px] px-2.5 py-1 font-mono text-[11px] font-semibold transition-all ${
                     isActive
-                      ? "bg-white/10 text-white shadow-[0_0_15px_rgba(255,255,255,0.08)]"
-                      : "text-zinc-400 hover:bg-white/[0.04] hover:text-white"
+                      ? "bg-white/15 text-white"
+                      : "text-zinc-400 hover:bg-white/[0.05] hover:text-white"
                   }`}
                 >
-                  {isActive && (
-                    <span className="absolute -bottom-[13px] left-1/2 h-[2px] w-5 -translate-x-1/2 bg-[#C2410C]" />
-                  )}
                   {item.label}
                 </button>
               );
@@ -424,169 +420,47 @@ export function DeveloperCodeShowcase() {
           </div>
         </div>
 
-        {/* Contrôles droits */}
-        <div className="flex items-center gap-3">
-          <span className="hidden font-mono text-[11px] text-zinc-500 sm:inline">
-            {snippet.filename}
-          </span>
-          <button
-            type="button"
-            onClick={handleCopy}
-            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 font-mono text-[11px] font-semibold text-zinc-200 transition-all hover:bg-white/10 hover:text-white active:scale-95"
-            title="Copier le code"
-          >
-            {copied ? (
-              <>
-                <span className="text-[#34D399]">✓</span>
-                <span className="text-[#34D399]">Copié !</span>
-              </>
-            ) : (
-              <>
-                <span>📋</span>
-                <span>Copier</span>
-              </>
-            )}
-          </button>
-        </div>
+        {/* Bouton Copier sans emoji */}
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="inline-flex cursor-pointer items-center gap-1.5 rounded-[6px] border border-white/10 bg-white/[0.05] px-2.5 py-1 font-mono text-[11px] font-medium text-zinc-300 transition-all hover:bg-white/10 hover:text-white active:scale-95"
+          title="Copier le code"
+        >
+          {copied ? (
+            <>
+              <CheckIcon className="h-3.5 w-3.5 text-[#34D399]" />
+              <span className="text-[#34D399]">Copie</span>
+            </>
+          ) : (
+            <>
+              <CopyIcon className="h-3.5 w-3.5 text-zinc-400" />
+              <span>Copier</span>
+            </>
+          )}
+        </button>
       </div>
 
-      {/* Disposition Split-Screen Studio (Stripe + Linear) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-white/[0.08]">
-        {/* Colonne Gauche : Code Editor avec numéros de lignes (Col 7) */}
-        <div className="lg:col-span-7 p-4 sm:p-6 overflow-x-auto font-mono text-xs sm:text-[13px] leading-[1.75] bg-[#07080A]/80">
-          <pre className="text-zinc-300">
-            <code>{snippet.highlighted}</code>
-          </pre>
-        </div>
-
-        {/* Colonne Droite : Live Sandbox & Event Stream (Col 5) */}
-        <div className="lg:col-span-5 flex flex-col justify-between bg-[#0B0C10]/95 p-4 sm:p-6 space-y-6">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
-              <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-[#10B981] animate-pulse shadow-[0_0_8px_#10B981]" />
-                <span className="font-mono text-xs font-bold uppercase tracking-wider text-zinc-300">
-                  Live Stream Événements
-                </span>
-              </div>
-              <span className="rounded-full border border-white/10 bg-white/[0.05] px-2 py-0.5 font-mono text-[10px] font-semibold text-zinc-400">
-                sandbox · testmode
-              </span>
-            </div>
-
-            {/* Pipeline d'étapes interactif */}
-            <div className="space-y-2.5">
-              {/* Étape 1 */}
-              <div
-                className={`flex items-start gap-3 rounded-xl border p-2.5 transition-all ${
-                  simStep >= 1
-                    ? "border-emerald-500/30 bg-emerald-950/20 text-emerald-300"
-                    : "border-white/[0.05] bg-white/[0.02] text-zinc-500"
-                }`}
-              >
-                <span className="mt-0.5 font-mono text-[11px] font-bold">01</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="font-mono text-xs font-bold">POST /v1/deliveries</span>
-                    <span className="font-mono text-[10px] text-emerald-400">201 CREATED</span>
-                  </div>
-                  <p className="font-mono text-[11px] text-zinc-400 truncate">
-                    OFK-2026-0842 · Idempotency-Key scellée
-                  </p>
-                </div>
-              </div>
-
-              {/* Étape 2 */}
-              <div
-                className={`flex items-start gap-3 rounded-xl border p-2.5 transition-all ${
-                  simStep >= 2
-                    ? "border-sky-500/30 bg-sky-950/20 text-sky-300"
-                    : "border-white/[0.05] bg-white/[0.02] text-zinc-500"
-                }`}
-              >
-                <span className="mt-0.5 font-mono text-[11px] font-bold">02</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="font-mono text-xs font-bold">delivery.assigned</span>
-                    <span className="font-mono text-[10px] text-sky-400">DISPATCHED</span>
-                  </div>
-                  <p className="font-mono text-[11px] text-zinc-400 truncate">
-                    Coursier Koffi Kouamé (Marcory Zone 4)
-                  </p>
-                </div>
-              </div>
-
-              {/* Étape 3 */}
-              <div
-                className={`flex items-start gap-3 rounded-xl border p-2.5 transition-all ${
-                  simStep >= 3
-                    ? "border-amber-500/30 bg-amber-950/20 text-amber-300"
-                    : "border-white/[0.05] bg-white/[0.02] text-zinc-500"
-                }`}
-              >
-                <span className="mt-0.5 font-mono text-[11px] font-bold">03</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="font-mono text-xs font-bold">delivery.arrived</span>
-                    <span className="font-mono text-[10px] text-amber-400">GPS ±12m</span>
-                  </div>
-                  <p className="font-mono text-[11px] text-zinc-400 truncate">
-                    Arrivée certifiée chez le client à Cocody
-                  </p>
-                </div>
-              </div>
-
-              {/* Étape 4 */}
-              <div
-                className={`flex items-start gap-3 rounded-xl border p-2.5 transition-all ${
-                  simStep >= 4
-                    ? "border-emerald-500/40 bg-emerald-950/30 text-emerald-300 shadow-[0_0_20px_rgba(16,185,129,0.12)]"
-                    : "border-white/[0.05] bg-white/[0.02] text-zinc-500"
-                }`}
-              >
-                <span className="mt-0.5 font-mono text-[11px] font-bold">04</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="font-mono text-xs font-bold">delivery.delivered</span>
-                    <span className="font-mono text-[10px] font-bold text-emerald-400">SCELLÉ SHA-256</span>
-                  </div>
-                  <p className="font-mono text-[11px] text-zinc-400 truncate">
-                    Code secret <strong className="text-white">4 8 2 9</strong> validé bilatéralement
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Bouton de test interactif Stripe/Linear */}
-          <div className="pt-2">
-            <button
-              type="button"
-              onClick={runSimulation}
-              disabled={isSimulating}
-              className="w-full inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#C2410C] to-[#EA580C] px-4 font-mono text-xs font-bold uppercase tracking-wider text-white shadow-[0_0_20px_rgba(194,65,12,0.35)] transition-all hover:brightness-110 active:scale-98 disabled:opacity-50"
-            >
-              <span>{isSimulating ? "Simulation en cours…" : "Simuler un cycle complet en direct"}</span>
-              <span className="text-xs">⚡</span>
-            </button>
-          </div>
-        </div>
+      {/* Zone de code */}
+      <div className="p-4 sm:p-5 overflow-x-auto font-mono text-xs sm:text-[13px] leading-[1.7] bg-[#0A0C10]">
+        <pre className="text-zinc-300">
+          <code>{snippet.highlighted}</code>
+        </pre>
       </div>
 
-      {/* Barre de bas de page avec specs techniques */}
-      <div className="flex flex-wrap items-center justify-between border-t border-white/[0.08] bg-[#0E1015]/90 px-4 py-2.5 sm:px-6 gap-2 text-xs font-mono text-zinc-400">
-        <div className="flex items-center gap-4">
-          <span className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#10B981]" />
-            <span>OpenAPI 3.1.0</span>
+      {/* Barre de statut et reponse (Style Stripe Signature) */}
+      <div className="flex flex-wrap items-center justify-between border-t border-white/[0.08] bg-[#14171F] px-4 py-2 sm:px-5 gap-2 text-xs font-mono">
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#10B981]/15 px-2 py-0.5 font-bold text-[10px] text-[#34D399] border border-[#10B981]/30">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#10B981] animate-pulse" />
+            201 CREATED
           </span>
-          <span className="hidden sm:inline">·</span>
-          <span className="hidden sm:inline">HMAC-SHA256 Webhooks</span>
-          <span className="hidden sm:inline">·</span>
-          <span className="hidden sm:inline">99.98% Uptime SLA</span>
+          <span className="text-zinc-400 text-[11px] hidden sm:inline">
+            preuve scellee SHA-256
+          </span>
         </div>
         <div className="text-[11px] text-zinc-500">
-          Latence moyenne API : <span className="text-emerald-400 font-bold">~42 ms</span>
+          Latence : <span className="text-[#34D399] font-bold">~42 ms</span>
         </div>
       </div>
     </div>
