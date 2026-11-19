@@ -105,27 +105,17 @@ export default async function Home() {
 
       {/* ── NAVIGATION PRINCIPALE ────────────────────────────────────────── */}
       <header className="sticky top-0 z-30 border-b border-[#EAEAEA] bg-[#FBFBFA]/90 backdrop-blur-[6px]">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <Link href="/">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+          <div className="flex items-center gap-3">
+            <Link href="/" className="transition-opacity hover:opacity-90">
               <Wordmark className="text-base sm:text-lg" />
             </Link>
             <span className="hidden rounded-full border border-[#EAEAEA] bg-[#F7F6F3] px-2.5 py-0.5 font-mono text-[11px] uppercase tracking-[0.05em] text-[#787774] md:inline-block">
               Abidjan · Côte d&apos;Ivoire
             </span>
-            <a
-              href="https://github.com/chepa-BuildSphere/liv.ofika"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full border border-[#EAEAEA] bg-[#F7F6F3] px-2.5 py-0.5 font-mono text-[11px] text-[#787774] transition-colors hover:border-[#111111] hover:text-[#111111]"
-              title="Projet Open Source sur GitHub"
-            >
-              <GitHubIcon className="h-3 w-3 fill-current" />
-              <span className="hidden xs:inline">Open Source</span>
-            </a>
           </div>
 
-          <nav aria-label="Navigation principale" className="flex items-center gap-2 sm:gap-4">
+          <nav aria-label="Navigation principale" className="flex items-center gap-2 sm:gap-3.5">
             <a
               href="#how-it-works"
               className="hidden text-xs font-medium text-[#787774] transition-colors hover:text-[#111111] md:inline"
@@ -140,23 +130,46 @@ export default async function Home() {
             </a>
             <a
               href="#developers"
-              className="hidden text-xs font-medium text-[#787774] transition-colors hover:text-[#111111] md:inline"
+              className="hidden text-xs font-medium text-[#787774] transition-colors hover:text-[#111111] lg:inline"
             >
               Développeurs &amp; API
             </a>
+
+            {/* Pastille Signature GitHub Open Source · Style Linear & Stripe */}
             <a
               href="https://github.com/chepa-BuildSphere/liv.ofika"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-[#787774] transition-colors hover:text-[#111111]"
-              title="Code source GitHub (Open Source)"
+              className="group relative inline-flex items-center gap-2 overflow-hidden rounded-full border border-black/[0.08] bg-white/90 px-3 py-1.5 text-xs font-semibold text-[#111111] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.02)] backdrop-blur-md transition-all duration-200 hover:border-black/25 hover:bg-white hover:shadow-[0_4px_14px_rgba(0,0,0,0.08)] active:scale-[0.98]"
+              title="Code source ouvert sur GitHub"
             >
-              <GitHubIcon className="h-4 w-4 fill-current" />
-              <span className="hidden lg:inline">GitHub</span>
+              <div className="pointer-events-none absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+              <GitHubIcon className="h-3.5 w-3.5 fill-[#111111] transition-transform duration-200 group-hover:scale-110" />
+              <span className="hidden sm:inline font-semibold text-xs text-[#111111] tracking-tight">Open Source</span>
+              <span className="hidden sm:inline h-3 w-px bg-black/10" />
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-black/[0.04] px-1.5 py-0.5 font-mono text-[10px] font-semibold text-[#555] transition-colors group-hover:bg-[#111111] group-hover:text-white">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#15803D] shadow-[0_0_4px_#15803D] group-hover:bg-emerald-400 animate-pulse" />
+                <span>GitHub</span>
+              </span>
+              <svg
+                viewBox="0 0 16 16"
+                fill="none"
+                className="h-3 w-3 text-[#A1A1AA] transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-[#111111]"
+                aria-hidden="true"
+              >
+                <path
+                  d="M6 3.5L10.5 8L6 12.5"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
             </a>
+
             <Link
               href="/courier/login"
-              className="text-xs font-medium text-[#787774] transition-colors hover:text-[#111111]"
+              className="hidden sm:inline text-xs font-medium text-[#787774] transition-colors hover:text-[#111111]"
             >
               Espace Livreur
             </Link>
@@ -813,11 +826,15 @@ export default async function Home() {
                     href="https://github.com/chepa-BuildSphere/liv.ofika"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.05] px-5 text-xs font-semibold text-zinc-300 backdrop-blur-md transition-all hover:bg-white/10 hover:text-white hover:border-white/25 active:scale-95"
+                    className="group relative inline-flex h-11 items-center justify-center gap-2.5 overflow-hidden rounded-full border border-white/20 bg-white/[0.08] px-5 text-xs font-semibold text-white shadow-[0_0_20px_rgba(255,255,255,0.06)] backdrop-blur-xl transition-all duration-300 hover:border-white/40 hover:bg-white/[0.14] hover:shadow-[0_0_30px_rgba(255,255,255,0.18)] active:scale-95"
                     title="Code source complet du projet sur GitHub"
                   >
-                    <GitHubIcon className="h-4 w-4 fill-current text-zinc-400" />
-                    <span>GitHub (Open Source)</span>
+                    <div className="pointer-events-none absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-white/50 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                    <GitHubIcon className="h-4 w-4 fill-white transition-transform duration-200 group-hover:scale-110" />
+                    <span className="tracking-tight">GitHub Open Source</span>
+                    <span className="inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/20 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-400">
+                      Code libre
+                    </span>
                   </a>
                 </div>
               </div>
